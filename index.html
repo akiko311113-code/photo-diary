@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>フォト日記</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
+<style>
+  :root {
+    --bg-top: #fff7fa;
+    --bg-mid: #fef0f7;
+    --bg-bot: #fff9f0;
+    --card: #ffffff;
+    --text: #4a3b42;
+    --sub: #b08a97;
+    --accent: #ff7aa2;
+    --accent-dark: #e85a86;
+    --accent-garden: #5cb85c;
+    --accent-garden-dark: #3f9142;
+    --accent-review: #a78bfa;
+    --accent-backup: #7fa9d4;
+    --accent-schedule: #5b9bd5;
+    --accent-schedule-dark: #3d7ab5;
+    --border-schedule: #d5e6f5;
+    --border: #ffe1ec;
+    --border-garden: #d9f0d9;
+    --danger: #f2545b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Maru Gothic ProN", "UD Digi Kyokasho NK-R", "Yu Gothic", "Hiragino Sans", sans-serif;
+    color: var(--text);
+    background: linear-gradient(160deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bot) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  header { padding: 28px 16px 8px; text-align: center; }
+  header h1 { margin: 0; font-size: 1.7rem; letter-spacing: 0.04em; }
+  header p { margin: 6px 0 0; color: var(--sub); font-size: 0.85rem; }
+  .user-bar { text-align: center; font-size: 0.75rem; color: var(--sub); margin-top: 8px; }
+  .user-bar button {
+    margin-left: 8px; padding: 3px 12px; font-size: 0.7rem;
+    background: #fff; border: 1px solid var(--border); box-shadow: none; border-radius: 999px;
+  }
+
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 18px 16px 4px;
+  }
+  .nav-btn {
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--sub);
+    cursor: pointer;
+  }
+  .nav-btn.active[data-tab="diary"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-btn.active[data-tab="garden"] { background: var(--accent-garden); border-color: var(--accent-garden); color: #fff; }
+  .nav-btn.active[data-tab="review"] { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  .nav-btn.active[data-tab="backup"] { background: var(--accent-backup); border-color: var(--accent-backup); color: #fff; }
+  .nav-btn.active[data-tab="schedule"] { background: var(--accent-schedule); border-color: var(--accent-schedule); color: #fff; }
+
+  .container { max-width: 760px; margin: 0 auto; padding: 8px 16px 70px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .toolbar { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .toolbar input[type="text"] {
+    flex: 1; min-width: 140px; padding: 11px 14px;
+    border: 2px solid var(--border); border-radius: 12px; font-size: 0.95rem;
+    background: #fff;
+  }
+  #tab-garden .toolbar input[type="text"] { border-color: var(--border-garden); }
+
+  button {
+    cursor: pointer; border: none; border-radius: 12px;
+    padding: 11px 18px; font-size: 0.9rem; font-weight: 700;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  button:hover { opacity: 0.88; }
+  button:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 3px 0 var(--accent-dark); }
+  #tab-garden .btn-primary { background: var(--accent-garden); box-shadow: 0 3px 0 var(--accent-garden-dark); }
+  .btn-secondary { background: #fff; color: var(--text); border: 2px solid var(--border); }
+  .btn-danger { background: var(--danger); color: #fff; }
+
+  .ontheday-wrap {
+    background: linear-gradient(135deg, #fff0f6, #fff8ef);
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin: 16px 0;
+  }
+  .onthisday-title { font-weight: 800; color: var(--accent-dark); margin-bottom: 8px; font-size: 1rem; }
+  .onthisday-year { font-size: 0.8rem; font-weight: 700; color: var(--sub); margin: 10px 0 4px; }
+
+  .entry-form {
+    background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+    padding: 18px; margin-bottom: 20px; display: none;
+  }
+  #tab-garden .entry-form { border-color: var(--border-garden); }
+  .entry-form.open { display: block; }
+  .entry-form label { display: block; font-size: 0.8rem; color: var(--sub); margin: 12px 0 4px; font-weight: 700; }
+  .entry-form label:first-of-type { margin-top: 0; }
+  .entry-form input[type="date"],
+  .entry-form input[type="text"],
+  .entry-form textarea {
+    width: 100%; padding: 11px 14px; border: 2px solid var(--border);
+    border-radius: 12px; font-size: 0.95rem; font-family: inherit;
+  }
+  #tab-garden .entry-form input, #tab-garden .entry-form textarea { border-color: var(--border-garden); }
+  .entry-form textarea { min-height: 130px; resize: vertical; line-height: 1.6; }
+  .form-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+
+  .photo-preview { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+  .photo-thumb { position: relative; display: flex; gap: 10px; align-items: flex-start; width: 100%; padding-right: 30px; }
+  .photo-thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 2px solid var(--border); flex-shrink: 0; }
+  .photo-thumb .photo-caption {
+    flex: 1; min-height: 56px; padding: 8px 10px; font-size: 0.85rem; line-height: 1.5;
+    border: 1px solid var(--border); border-radius: 8px; font-family: inherit; resize: vertical;
+  }
+  .photo-thumb .photo-remove {
+    position: absolute; top: 0; right: 0; width: 22px; height: 22px; padding: 0;
+    border-radius: 50%; background: var(--danger); color: #fff; font-size: 0.7rem; line-height: 1;
+    box-shadow: none;
+  }
+
+  .entry-list { display: flex; flex-direction: column; gap: 12px; }
+  .companion-block { margin-top: 16px; padding-top: 14px; border-top: 2px dashed var(--border-garden); }
+  .companion-label { font-size: 0.75rem; font-weight: 700; color: var(--accent-garden-dark); margin-bottom: 6px; }
+  .entry-card {
+    background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+    padding: 16px; cursor: pointer;
+  }
+  #tab-garden .entry-card, .entry-card[data-section="garden"] { border-color: var(--border-garden); }
+  .entry-card[data-section="garden"] .entry-date { color: var(--accent-garden-dark); }
+  .entry-card[data-section="schedule"] { border-color: var(--border-schedule); }
+  .entry-card[data-section="schedule"] .entry-date { color: var(--accent-schedule-dark); }
+  .entry-card:hover { box-shadow: 0 4px 12px rgba(255, 122, 162, 0.15); }
+  .entry-date { font-size: 0.8rem; color: var(--accent-dark); font-weight: 800; margin-bottom: 4px; }
+  .category-badge {
+    display: inline-block; background: var(--border-garden); color: var(--accent-garden-dark);
+    border-radius: 999px; padding: 2px 10px; font-size: 0.7rem; font-weight: 700; margin-left: 8px;
+  }
+  .category-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: -8px 0 16px; }
+  .category-chip {
+    background: #fff; border: 2px solid var(--border-garden); color: var(--accent-garden-dark);
+    border-radius: 999px; padding: 5px 14px; font-size: 0.8rem; font-weight: 700; box-shadow: none;
+  }
+  .category-chip.active { background: var(--accent-garden); border-color: var(--accent-garden); color: #fff; }
+  .entry-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 6px; }
+  .entry-body {
+    color: var(--text); font-size: 0.9rem; line-height: 1.65; white-space: pre-wrap;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  }
+  .entry-card.expanded .entry-body { display: block; -webkit-line-clamp: unset; }
+  .photo-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .photo-strip img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; cursor: zoom-in; }
+  .entry-actions { margin-top: 10px; display: flex; gap: 8px; }
+  .entry-actions button { padding: 6px 12px; font-size: 0.8rem; box-shadow: none; }
+
+  .empty-state { text-align: center; color: var(--sub); padding: 50px 20px; }
+
+  .review-subnav { display: flex; gap: 8px; margin: 16px 0; }
+  .review-subnav button { background: #fff; border: 2px solid var(--border); color: var(--sub); }
+  .review-subnav button.active { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  .review-panel { display: none; }
+  .review-panel.active { display: block; }
+  .review-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .review-controls select, .review-controls input[type="date"] {
+    padding: 9px 12px; border: 2px solid var(--border); border-radius: 10px; font-size: 0.9rem;
+  }
+  .review-heading { font-weight: 800; color: var(--accent-review); margin-bottom: 12px; }
+  .month-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+  .month-cell { background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 10px; text-align: center; }
+  .month-label { font-size: 0.75rem; color: var(--sub); font-weight: 700; }
+  .month-count { font-size: 1.1rem; font-weight: 800; color: var(--accent-review); }
+
+  .cal-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .cal-controls select {
+    padding: 9px 12px; border: 2px solid var(--border-schedule); border-radius: 10px; font-size: 0.9rem;
+  }
+  .cal-controls button { background: #fff; border: 2px solid var(--border-schedule); color: var(--accent-schedule-dark); }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 20px; }
+  .cal-weekday { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--sub); padding: 4px 0; }
+  .cal-day {
+    background: #fff; border: 2px solid var(--border-schedule); border-radius: 10px;
+    min-height: 64px; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  }
+  .cal-day:hover { box-shadow: 0 2px 8px rgba(91, 155, 213, 0.2); }
+  .cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
+  .cal-day.today { border-color: var(--accent-schedule); border-width: 3px; }
+  .cal-day.selected { background: #eaf3fb; }
+  .cal-daynum { font-size: 0.75rem; font-weight: 700; color: var(--text); }
+  .cal-daynum.sunday-color, .cal-weekday.sunday-color { color: #e0524f; }
+  .cal-daynum.saturday-color, .cal-weekday.saturday-color { color: #3d7ab5; }
+  .cal-event-chip {
+    background: var(--border-schedule); color: var(--accent-schedule-dark); border-radius: 6px;
+    padding: 1px 4px; font-size: 0.65rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cal-event-bar {
+    background: var(--accent-schedule); color: #fff; border-radius: 6px;
+    padding: 1px 4px; font-size: 0.65rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cal-event-bar.bar-cont-left { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  .cal-event-bar.bar-cont-right { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .category-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .category-legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; color: var(--sub); }
+  .category-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .schedule-category-badge {
+    display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 0.7rem; font-weight: 700; margin-left: 8px;
+  }
+
+  .year-gantt-wrap { overflow-x: auto; margin-bottom: 20px; -webkit-overflow-scrolling: touch; border: 2px solid var(--border-schedule); border-radius: 12px; }
+  .year-gantt-v { display: grid; grid-template-rows: 34px repeat(31, 24px); background: #fff; }
+  .gantt-daylabel-corner {
+    position: sticky; left: 0; z-index: 2; background: #fff;
+    border-right: 2px solid var(--border-schedule); border-bottom: 2px solid var(--border-schedule);
+  }
+  .gantt-month-header {
+    background: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 800; color: var(--accent-schedule-dark); cursor: pointer;
+    border-bottom: 2px solid var(--border-schedule); border-right: 1px solid var(--border-schedule);
+  }
+  .gantt-daylabel {
+    position: sticky; left: 0; z-index: 1; background: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 700; color: var(--sub);
+    border-right: 2px solid var(--border-schedule); border-bottom: 1px solid var(--border-schedule);
+  }
+  .gantt-daycell-v {
+    border-right: 1px solid var(--border-schedule); border-bottom: 1px solid var(--border-schedule); cursor: pointer;
+  }
+  .gantt-daycell-v:hover { background: #eaf3fb; }
+  .gantt-daycell-v.today { background: #fff6e0; }
+  .gantt-daycell-v.sunday-bg { background: #fdecec; }
+  .gantt-daycell-v.saturday-bg { background: #eaf1fb; }
+  .gantt-daycell-v.invalid {
+    background: repeating-linear-gradient(45deg, #f4f4f4, #f4f4f4 4px, #eaeaea 4px, #eaeaea 8px);
+    cursor: default;
+  }
+  .gantt-bar-v {
+    margin: 1px 2px; border-radius: 4px; font-size: 0.66rem; font-weight: 700; padding: 2px 5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+  }
+  .schedule-form-date { font-weight: 800; color: var(--accent-schedule-dark); margin-bottom: 8px; }
+  #scheduleEntryForm { border-color: var(--border-schedule); }
+  #scheduleEntryForm input, #scheduleEntryForm textarea { border-color: var(--border-schedule); }
+  #tab-schedule .btn-primary { background: var(--accent-schedule); box-shadow: 0 3px 0 var(--accent-schedule-dark); }
+  @media (max-width: 480px) {
+    .cal-day { min-height: 48px; }
+    .cal-event-chip { font-size: 0.6rem; }
+  }
+
+  .backup-panel { text-align: center; }
+  .backup-panel p { color: var(--sub); font-size: 0.85rem; line-height: 1.7; max-width: 480px; margin: 12px auto; }
+  .backup-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .backup-actions button { background: #fff; border: 2px solid var(--accent-backup); color: var(--accent-backup); }
+
+  .lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(20, 12, 16, 0.9);
+    z-index: 1000; align-items: center; justify-content: center; flex-direction: column; padding: 20px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 90vw; max-height: 75vh; border-radius: 10px; }
+  .lightbox-caption { color: #fff; margin-top: 12px; font-size: 0.95rem; text-align: center; max-width: 80vw; }
+  .lightbox-close {
+    position: absolute; top: 16px; right: 20px; background: rgba(255,255,255,0.15); color: #fff;
+    width: 40px; height: 40px; border-radius: 50%; font-size: 1.1rem; box-shadow: none;
+  }
+  .lightbox-nav {
+    position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.15);
+    color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 1.4rem; box-shadow: none;
+  }
+  .lightbox-nav.prev { left: 16px; }
+  .lightbox-nav.next { right: 16px; }
+
+  .auth-gate {
+    position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bot) 100%);
+  }
+  .auth-card {
+    background: #fff; border-radius: 20px; padding: 40px 32px; text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08); max-width: 320px;
+  }
+  .auth-card .auth-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 14px; }
+  .auth-card p { color: var(--sub); font-size: 0.85rem; margin-bottom: 22px; line-height: 1.6; }
+  .auth-card button { width: 100%; }
+
+  @media (max-width: 480px) {
+    .month-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ---------- Photo diary additions ---------- */
+  .nav-btn.active[data-tab="calendar"] { background: var(--accent-schedule); border-color: var(--accent-schedule); color: #fff; }
+  .nav-btn.active[data-tab="record"] { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  #tab-calendar .btn-primary { background: var(--accent-schedule); box-shadow: 0 3px 0 var(--accent-schedule-dark); }
+
+  .cal-thumb { width: 100%; height: 30px; object-fit: cover; border-radius: 6px; margin-top: auto; }
+  .cal-marks { font-size: 0.6rem; line-height: 1; margin-top: auto; }
+  .cal-thumb + .cal-marks { margin-top: 2px; }
+
+  .day-head { display: flex; align-items: center; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+  .day-head .day-title { order: -1; flex-basis: 100%; text-align: center; font-weight: 800; font-size: 1.15rem; color: var(--accent-dark); }
+  #dayNextBtn { margin-left: auto; }
+  .day-head .holiday-name { display: block; font-size: 0.75rem; color: #e0524f; }
+  .day-head button { padding: 8px 12px; }
+  .day-section {
+    background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .day-section.schedule-section { border-color: var(--border-schedule); }
+  .day-section h2 { font-size: 0.95rem; margin: 0 0 10px; color: var(--accent-dark); }
+  .day-section.schedule-section h2 { color: var(--accent-schedule-dark); }
+  .day-section textarea, .day-section input[type="text"], .day-section select {
+    width: 100%; padding: 10px 12px; border: 2px solid var(--border);
+    border-radius: 12px; font-size: 0.95rem; font-family: inherit; background: #fff;
+  }
+  .day-section textarea { min-height: 90px; resize: vertical; line-height: 1.6; }
+  .section-actions { margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .section-actions button { padding: 8px 14px; font-size: 0.85rem; }
+  .saved-note { font-size: 0.75rem; color: var(--accent-garden-dark); align-self: center; }
+  .day-section .entry-card { cursor: default; margin-bottom: 8px; }
+  .day-section .entry-form { margin: 10px 0 0; padding: 14px; }
+
+  .photo-edit-list { display: flex; flex-direction: column; gap: 14px; }
+  .photo-edit {
+    display: grid; grid-template-columns: 120px 1fr; gap: 12px;
+    border-top: 1px dashed var(--border); padding-top: 14px;
+  }
+  .photo-edit:first-child { border-top: none; padding-top: 0; }
+  .photo-edit img { width: 120px; height: 120px; object-fit: cover; border-radius: 12px; cursor: zoom-in; }
+  .photo-edit .fields { display: flex; flex-direction: column; gap: 6px; }
+  .photo-edit .fields textarea { min-height: 64px; font-size: 0.88rem; }
+  .photo-edit .kind-row { display: flex; gap: 6px; }
+  .photo-edit .kind-row select { width: auto; flex-shrink: 0; font-size: 0.85rem; }
+  .photo-edit .kind-row input { flex: 1; font-size: 0.85rem; min-width: 0; }
+  .photo-edit .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .photo-edit .row-actions button { padding: 6px 12px; font-size: 0.8rem; box-shadow: none; }
+  .pending-box { margin-top: 14px; padding: 14px; border: 2px dashed var(--accent); border-radius: 14px; background: #fff8fb; }
+  .pending-label { font-size: 0.8rem; font-weight: 800; color: var(--accent-dark); margin-bottom: 10px; }
+  .tag-badge {
+    display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 0.7rem; font-weight: 700;
+    background: var(--border-garden); color: var(--accent-garden-dark);
+  }
+  .tag-badge.record { background: #ede7fe; color: #7c5cd6; }
+  @media (max-width: 480px) {
+    .photo-edit { grid-template-columns: 90px 1fr; }
+    .photo-edit img { width: 90px; height: 90px; }
+    .cal-thumb { height: 22px; }
+  }
+
+  .collection-intro { color: var(--sub); font-size: 0.85rem; line-height: 1.7; margin: 16px 0; }
+  .tag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .tag-card {
+    background: #fff; border: 2px solid var(--border-garden); border-radius: 16px; overflow: hidden;
+    cursor: pointer; text-align: left; padding: 0; font-weight: 400; color: var(--text);
+  }
+  #tab-record .tag-card { border-color: #e2d9fd; }
+  .tag-card img { width: 100%; height: 120px; object-fit: cover; display: block; }
+  .tag-card .tag-info { padding: 10px 12px; }
+  .tag-card .tag-name { font-weight: 800; font-size: 0.95rem; }
+  .tag-card .tag-meta { font-size: 0.72rem; color: var(--sub); margin-top: 2px; }
+  .collection-head { display: flex; align-items: center; gap: 8px; margin: 16px 0 8px; flex-wrap: wrap; }
+  .collection-head h2 { flex: 1; margin: 0; font-size: 1.15rem; min-width: 120px; }
+  .collection-head button { padding: 8px 12px; font-size: 0.82rem; }
+  .collection-sub { font-size: 0.8rem; color: var(--sub); margin-bottom: 14px; }
+  .view-toggle { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .view-toggle button { background: #fff; border: 2px solid var(--border-garden); color: var(--accent-garden-dark); padding: 6px 14px; font-size: 0.8rem; box-shadow: none; }
+  .view-toggle button.active { background: var(--accent-garden); border-color: var(--accent-garden); color: #fff; }
+  #tab-record .view-toggle button { border-color: #e2d9fd; color: #7c5cd6; }
+  #tab-record .view-toggle button.active { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  .timeline { border-left: 3px solid var(--border-garden); margin-left: 8px; padding-left: 16px; }
+  #tab-record .timeline { border-color: #e2d9fd; }
+  .timeline-day { margin-bottom: 22px; position: relative; }
+  .timeline-day::before {
+    content: ""; position: absolute; left: -24px; top: 4px; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--accent-garden);
+  }
+  #tab-record .timeline-day::before { background: var(--accent-review); }
+  .timeline-date { font-size: 0.85rem; font-weight: 800; color: var(--accent-garden-dark); cursor: pointer; margin-bottom: 8px; }
+  #tab-record .timeline-date { color: #7c5cd6; }
+  .timeline-date .ago { font-weight: 400; color: var(--sub); font-size: 0.75rem; margin-left: 6px; }
+  .timeline-photo { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+  .timeline-photo img { width: 160px; height: 160px; object-fit: cover; border-radius: 12px; cursor: zoom-in; flex-shrink: 0; }
+  .timeline-photo .cap { font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
+  @media (max-width: 480px) { .timeline-photo img { width: 120px; height: 120px; } }
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .photo-grid figure { margin: 0; }
+  .photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: zoom-in; display: block; }
+  .photo-grid figcaption { font-size: 0.7rem; color: var(--sub); text-align: center; margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div class="auth-title">📷 フォト日記 🌹</div>
+    <p>データはあなたのGoogleアカウントに安全に保存され、パソコンとスマホで自動的に同期されます。</p>
+    <button class="btn-primary" id="googleSignInBtn">Googleでログイン</button>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
+
+<header>
+  <h1>📷 フォト日記 🌹</h1>
+  <p>その日の写真と、ひとことを残す</p>
+  <div class="user-bar" id="userBar"></div>
+</header>
+
+<nav class="tabs">
+  <button class="nav-btn active" data-tab="calendar">🗓️ カレンダー</button>
+  <button class="nav-btn" data-tab="garden">🌹 園芸</button>
+  <button class="nav-btn" data-tab="record">📚 記録</button>
+  <button class="nav-btn" data-tab="backup">💾 バックアップ</button>
+</nav>
+
+<main class="container">
+
+  <section id="tab-calendar" class="tab-panel active">
+    <div class="review-subnav schedule-subnav">
+      <button class="active" data-schedule="month">月間</button>
+      <button data-schedule="year">年間</button>
+    </div>
+
+    <div class="review-panel active" id="schedule-month">
+      <div class="cal-controls">
+        <button class="btn-secondary" id="calPrevMonth">‹ 前月</button>
+        <select id="scheduleCalYear"></select>
+        <select id="scheduleCalMonth"></select>
+        <button class="btn-secondary" id="calNextMonth">翌月 ›</button>
+        <button class="btn-secondary" id="calToday">今日</button>
+      </div>
+      <div class="category-legend" id="scheduleCategoryLegend"></div>
+      <div class="calendar-grid" id="scheduleCalendarGrid"></div>
+      <p class="collection-intro">日付をタップすると、その日の写真・コメント・予定を記録できます。</p>
+    </div>
+
+    <div class="review-panel" id="schedule-year">
+      <div class="review-controls">
+        <select id="scheduleYearOnly"></select>
+        <button class="btn-secondary" id="scheduleYearShow">表示</button>
+      </div>
+      <div id="scheduleYearResult"></div>
+    </div>
+  </section>
+
+  <!-- Day screen: opened by tapping a date (not in the tab bar) -->
+  <section id="tab-day" class="tab-panel">
+    <div class="day-head">
+      <button class="btn-secondary" id="dayBackBtn">‹ カレンダー</button>
+      <button class="btn-secondary" id="dayPrevBtn">前の日</button>
+      <div class="day-title" id="dayTitle"></div>
+      <button class="btn-secondary" id="dayNextBtn">次の日</button>
+    </div>
+
+    <div class="day-section">
+      <h2>📷 この日の写真</h2>
+      <div class="photo-edit-list" id="dayPhotoList"></div>
+      <div class="pending-box" id="pendingBox" style="display:none;">
+        <div class="pending-label">新しく追加する写真（説明と分類を入れて「保存する」）</div>
+        <div class="photo-edit-list" id="pendingList"></div>
+        <div class="section-actions">
+          <button class="btn-secondary" id="pendingCancelBtn">やめる</button>
+          <button class="btn-primary" id="pendingSaveBtn">写真を保存する</button>
+        </div>
+      </div>
+      <div class="section-actions">
+        <button class="btn-primary" id="addPhotoBtn">＋ 写真を追加</button>
+        <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
+      </div>
+    </div>
+
+    <div class="day-section">
+      <h2>✏️ この日のコメント</h2>
+      <textarea id="dayComment" placeholder="今日のできごとや、思ったことを自由に"></textarea>
+      <div class="section-actions">
+        <span class="saved-note" id="commentSavedNote"></span>
+        <button class="btn-primary" id="saveCommentBtn">コメントを保存</button>
+      </div>
+    </div>
+
+    <div class="day-section schedule-section">
+      <h2>🗓️ この日の予定</h2>
+      <div id="scheduleDayPanel"></div>
+      <div class="entry-form" id="scheduleEntryForm">
+        <input type="hidden" id="scheduleEditingId">
+        <label>開始日</label>
+        <input type="date" id="scheduleStartDate">
+        <label>終了日（連続する予定の場合。1日だけなら空欄でOK）</label>
+        <input type="date" id="scheduleEndDate">
+        <label>カテゴリ（色分け）</label>
+        <select id="scheduleCategorySelect"></select>
+        <label>タイトル</label>
+        <input type="text" id="scheduleEntryTitle" placeholder="例：病院の予約">
+        <label>メモ（任意）</label>
+        <textarea id="scheduleEntryNote" placeholder="時間や持ち物など"></textarea>
+        <div class="form-actions">
+          <button class="btn-secondary" id="scheduleCancelBtn">キャンセル</button>
+          <button class="btn-primary" id="scheduleSaveBtn">保存する</button>
+        </div>
+      </div>
+      <div class="section-actions">
+        <button class="btn-secondary" id="addScheduleBtn">＋ 予定を追加</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-garden" class="tab-panel">
+    <div id="gardenBody"></div>
+  </section>
+
+  <section id="tab-record" class="tab-panel">
+    <div id="recordBody"></div>
+  </section>
+
+  <section id="tab-backup" class="tab-panel">
+    <div class="backup-panel">
+      <p>
+        写真・コメント・予定は自動的にクラウド（Firebase）に保存され、
+        ログインしたパソコン・スマホどちらでも同じ内容がすぐに反映されます。<br>
+        こちらは「万が一に備えた保存用ファイル」を作る機能です。
+        普段の利用では押す必要はありません。
+      </p>
+      <div class="backup-actions">
+        <button id="exportBtn">📤 バックアップを保存(JSON)</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</div>
+
+<datalist id="gardenTags"></datalist>
+<datalist id="recordTags"></datalist>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <button class="lightbox-nav prev" id="lightboxPrev">‹</button>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+  <button class="lightbox-nav next" id="lightboxNext">›</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* ---------- Firebase init ----------
+   Same Firebase project as the Diary app. The `schedule` collection is
+   shared with Diary, so predetermined events appear in both apps.
+   Photo-diary's own data lives in `pd_photos` and `pd_days`. */
+const firebaseConfig = {
+  apiKey: "AIzaSyDhlhAfrsm68S0XY2VrMULILDbIv3gIVUQ",
+  authDomain: "diary-app-d8a07.firebaseapp.com",
+  projectId: "diary-app-d8a07",
+  storageBucket: "diary-app-d8a07.firebasestorage.app",
+  messagingSenderId: "963141766965",
+  appId: "1:963141766965:web:1597ac7548f7cb069f867c",
+  measurementId: "G-J1NP3DQ36D"
+};
+const ALLOWED_EMAIL = "akiko311113@gmail.com";
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+/* ---------- Utilities ---------- */
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function formatDateJp(dateStr) {
+  const [y, m, d] = dateStr.split('-');
+  const dow = ['日', '月', '火', '水', '木', '金', '土'][new Date(dateStr + 'T00:00:00').getDay()];
+  return `${y}年${m}月${d}日（${dow}）`;
+}
+function toDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function getWeekRange(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const start = new Date(d); start.setDate(d.getDate() - day);
+  const end = new Date(start); end.setDate(start.getDate() + 6);
+  return [toDateStr(start), toDateStr(end)];
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : str;
+  return div.innerHTML;
+}
+
+/* ---------- Japanese public holidays (calculated, ~1980-2099) ---------- */
+function nthMondayOfMonth(year, month, n) {
+  let count = 0;
+  for (let day = 1; day <= 31; day++) {
+    const dt = new Date(year, month - 1, day);
+    if (dt.getMonth() !== month - 1) break;
+    if (dt.getDay() === 1) { count++; if (count === n) return day; }
+  }
+  return null;
+}
+function vernalEquinoxDay(year) {
+  return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+function autumnalEquinoxDay(year) {
+  return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+}
+const holidayCache = {};
+function getJapaneseHolidays(year) {
+  if (holidayCache[year]) return holidayCache[year];
+  const holidays = new Map();
+  const add = (m, d, name) => { if (d) holidays.set(`${year}-${pad(m)}-${pad(d)}`, name); };
+  add(1, 1, '元日');
+  add(1, nthMondayOfMonth(year, 1, 2), '成人の日');
+  add(2, 11, '建国記念の日');
+  add(2, 23, '天皇誕生日');
+  add(3, vernalEquinoxDay(year), '春分の日');
+  add(4, 29, '昭和の日');
+  add(5, 3, '憲法記念日');
+  add(5, 4, 'みどりの日');
+  add(5, 5, 'こどもの日');
+  add(7, nthMondayOfMonth(year, 7, 3), '海の日');
+  add(8, 11, '山の日');
+  add(9, nthMondayOfMonth(year, 9, 3), '敬老の日');
+  add(9, autumnalEquinoxDay(year), '秋分の日');
+  add(10, nthMondayOfMonth(year, 10, 2), 'スポーツの日');
+  add(11, 3, '文化の日');
+  add(11, 23, '勤労感謝の日');
+
+  /* 国民の休日: a weekday sandwiched between two holidays (e.g. Sep 22
+     between 敬老の日 and 秋分の日) becomes a holiday itself. */
+  for (const dateStr of Array.from(holidays.keys())) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const next = new Date(d); next.setDate(d.getDate() + 1);
+    const nextStr = toDateStr(next);
+    if (holidays.has(nextStr)) continue;
+    const afterNext = new Date(d); afterNext.setDate(d.getDate() + 2);
+    if (holidays.has(toDateStr(afterNext)) && next.getDay() !== 0) {
+      holidays.set(nextStr, '国民の休日');
+    }
+  }
+
+  for (const [dateStr] of Array.from(holidays.entries())) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (d.getDay() === 0) {
+      const next = new Date(d);
+      do { next.setDate(next.getDate() + 1); } while (holidays.has(toDateStr(next)));
+      holidays.set(toDateStr(next), '振替休日');
+    }
+  }
+  holidayCache[year] = holidays;
+  return holidays;
+}
+function holidayNameOf(dateStr) {
+  const year = parseInt(dateStr.split('-')[0], 10);
+  return getJapaneseHolidays(year).get(dateStr) || null;
+}
+function resizeImage(file, maxDim = 1280, quality = 0.75) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+
+/* ---------- Year view (same as Diary) ---------- */
+function buildYearGanttVertical(year) {
+  const today = todayStr();
+  const monthsInfo = [];
+  let cursor = 2; // column 1 is the day-of-month label
+  for (let m = 1; m <= 12; m++) {
+    const daysInMonth = new Date(year, m, 0).getDate();
+    const monthStart = `${year}-${pad(m)}-01`;
+    const monthEnd = `${year}-${pad(m)}-${pad(daysInMonth)}`;
+    const yearViewCategoryIds = new Set(SCHEDULE_CATEGORIES.slice(0, 4).map(c => c.id));
+    const events = scheduleEvents
+      .filter(ev => yearViewCategoryIds.has(ev.categoryId) && eventEndDate(ev) >= monthStart && ev.date <= monthEnd)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const trackEnds = [];
+    const placed = events.map(ev => {
+      const dispStart = ev.date < monthStart ? monthStart : ev.date;
+      const dispEnd = eventEndDate(ev) > monthEnd ? monthEnd : eventEndDate(ev);
+      let track = trackEnds.findIndex(end => end < dispStart);
+      if (track === -1) { track = trackEnds.length; trackEnds.push(dispEnd); }
+      else trackEnds[track] = dispEnd;
+      return { ev, dispStart, dispEnd, track };
+    });
+    const trackCount = Math.max(1, trackEnds.length);
+    monthsInfo.push({ m, daysInMonth, placed, trackCount, startCol: cursor });
+    cursor += trackCount;
+  }
+  const totalSubCols = cursor - 2;
+
+  let html = '<div class="gantt-daylabel-corner" style="grid-column:1;grid-row:1;"></div>';
+  for (const mi of monthsInfo) {
+    html += `<div class="gantt-month-header" style="grid-column:${mi.startCol} / span ${mi.trackCount};grid-row:1;" data-year="${year}" data-month="${mi.m}">${mi.m}月</div>`;
+  }
+  for (let d = 1; d <= 31; d++) {
+    html += `<div class="gantt-daylabel" style="grid-column:1;grid-row:${d + 1};">${d}</div>`;
+  }
+  for (const mi of monthsInfo) {
+    for (let d = 1; d <= 31; d++) {
+      if (d > mi.daysInMonth) {
+        html += `<div class="gantt-daycell-v invalid" style="grid-column:${mi.startCol} / span ${mi.trackCount};grid-row:${d + 1};"></div>`;
+      } else {
+        const dateStr = `${year}-${pad(mi.m)}-${pad(d)}`;
+        const cls = ['gantt-daycell-v'];
+        if (dateStr === today) {
+          cls.push('today');
+        } else {
+          const dow = new Date(year, mi.m - 1, d).getDay();
+          if (holidayNameOf(dateStr) || dow === 0) cls.push('sunday-bg');
+          else if (dow === 6) cls.push('saturday-bg');
+        }
+        html += `<div class="${cls.join(' ')}" style="grid-column:${mi.startCol} / span ${mi.trackCount};grid-row:${d + 1};" data-date="${dateStr}"></div>`;
+      }
+    }
+    for (const { ev, dispStart, dispEnd, track } of mi.placed) {
+      const startDay = parseInt(dispStart.split('-')[2], 10);
+      const endDay = parseInt(dispEnd.split('-')[2], 10);
+      const cat = scheduleCategoryOf(ev);
+      const bg = cat ? cat.bg : 'var(--accent-schedule)';
+      const color = cat ? cat.text : '#ffffff';
+      html += `<div class="gantt-bar-v" data-date="${ev.date}"
+        style="grid-column:${mi.startCol + track};grid-row:${startDay + 1} / span ${endDay - startDay + 1};background:${bg};color:${color};"
+        title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</div>`;
+    }
+  }
+  return { html, totalSubCols };
+}
+
+
+async function saveDoc(col, id, data) {
+  try { await setDoc(doc(db, col, id), data); return true; }
+  catch (err) { alert('保存できませんでした: ' + err.message); return false; }
+}
+async function removeDoc(col, id) {
+  try { await deleteDoc(doc(db, col, id)); return true; }
+  catch (err) { alert('削除できませんでした: ' + err.message); return false; }
+}
+
+/* ---------- Cloud data cache (kept in sync by Firestore listeners) ---------- */
+let allPhotos = [];      // pd_photos: { date, dataUrl, caption, kind: ''|'garden'|'record', tag, order, createdAt }
+let dayNotes = {};       // pd_days: keyed by date -> { date, comment, updatedAt }
+let scheduleEvents = []; // schedule (shared with Diary)
+let unsubs = [];
+
+const KIND_LABELS = { '': '日々の写真', garden: '🌹 園芸', record: '📚 記録' };
+const TAG_PLACEHOLDERS = { garden: '植物の名前（例：バラ）', record: 'テーマ（例：料理・手芸）' };
+
+function photosOfDate(dateStr) {
+  return allPhotos.filter(p => p.date === dateStr)
+    .sort((a, b) => (a.order || 0) - (b.order || 0) || (a.createdAt || 0) - (b.createdAt || 0));
+}
+function photosOfTag(kind, tag) {
+  return allPhotos.filter(p => p.kind === kind && p.tag === tag)
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.order || 0) - (b.order || 0));
+}
+function tagsOf(kind) {
+  const map = new Map();
+  for (const p of allPhotos) {
+    if (p.kind !== kind || !p.tag) continue;
+    if (!map.has(p.tag)) map.set(p.tag, []);
+    map.get(p.tag).push(p);
+  }
+  return map;
+}
+
+/* ---------- Auth ---------- */
+document.getElementById('googleSignInBtn').addEventListener('click', () => {
+  signInWithPopup(auth, new GoogleAuthProvider()).catch(err => {
+    alert('ログインに失敗しました: ' + err.message);
+  });
+});
+
+onAuthStateChanged(auth, async (user) => {
+  if (user && user.email === ALLOWED_EMAIL) {
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('appContent').style.display = '';
+    document.getElementById('userBar').innerHTML =
+      `ログイン中: ${escapeHtml(user.email)} <button id="logoutBtn">ログアウト</button>`;
+    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+    switchTab('calendar');
+    startListeners();
+  } else if (user) {
+    alert('このアプリはご本人専用です。別のアカウントでログインされました。');
+    await signOut(auth);
+  } else {
+    document.getElementById('authGate').style.display = 'flex';
+    document.getElementById('appContent').style.display = 'none';
+    stopListeners();
+  }
+});
+
+function startListeners() {
+  const onErr = (err) => alert('データを読み込めませんでした: ' + err.message);
+  unsubs.push(onSnapshot(collection(db, 'pd_photos'), (snap) => {
+    allPhotos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshAllViews();
+  }, onErr));
+  unsubs.push(onSnapshot(collection(db, 'pd_days'), (snap) => {
+    dayNotes = {};
+    snap.docs.forEach(d => { dayNotes[d.id] = d.data(); });
+    refreshAllViews();
+  }, onErr));
+  unsubs.push(onSnapshot(collection(db, 'schedule'), (snap) => {
+    scheduleEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshAllViews();
+  }, onErr));
+}
+function stopListeners() {
+  unsubs.forEach(u => u());
+  unsubs = [];
+  allPhotos = []; dayNotes = {}; scheduleEvents = [];
+}
+function refreshAllViews() {
+  renderScheduleMonth();
+  showScheduleYearReview();
+  if (currentDay) renderDay({ keepComment: true });
+  renderCollection('garden');
+  renderCollection('record');
+  updateTagLists();
+}
+
+/* ---------- Tabs ---------- */
+let currentTab = 'calendar';
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+  if (tab !== 'day') currentDay = null;
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+/* ---------- Schedule calendar (same as Diary's 予定 page) ---------- */
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth() + 1;
+
+const SCHEDULE_CATEGORIES = [
+  { id: 'cat1', name: '小豆島', bg: '#2bb3a3', text: '#ffffff' },
+  { id: 'cat3', name: '旅行・お出かけ', bg: '#b072e0', text: '#ffffff' },
+  { id: 'cat4', name: '来客訪問', bg: '#d64545', text: '#ffffff' },
+  { id: 'cat2', name: '帰岡', bg: '#4a5fc1', text: '#ffffff' },
+  { id: 'cat5', name: '理美容・コーヒー豆', bg: '#f39c3d', text: '#ffffff' }
+];
+function scheduleCategoryOf(ev) { return SCHEDULE_CATEGORIES.find(c => c.id === ev.categoryId) || null; }
+
+function populateScheduleControls() {
+  const y = new Date().getFullYear();
+  const years = []; for (let i = -1; i <= 9; i++) years.push(y + i);
+  const yearOpts = years.map(v => `<option value="${v}">${v}年</option>`).join('');
+  document.getElementById('scheduleCalYear').innerHTML = yearOpts;
+  document.getElementById('scheduleYearOnly').innerHTML = yearOpts;
+  document.getElementById('scheduleCalMonth').innerHTML =
+    Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join('');
+  document.getElementById('scheduleCalYear').value = calYear;
+  document.getElementById('scheduleCalMonth').value = calMonth;
+  document.getElementById('scheduleYearOnly').value = calYear;
+
+  document.getElementById('scheduleCategorySelect').innerHTML =
+    '<option value="">（なし）</option>' +
+    SCHEDULE_CATEGORIES.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+  document.getElementById('scheduleCategoryLegend').innerHTML = SCHEDULE_CATEGORIES.map(c => `
+    <div class="category-legend-item"><span class="category-legend-dot" style="background:${c.bg}"></span>${escapeHtml(c.name)}</div>
+  `).join('');
+}
+populateScheduleControls();
+
+function eventEndDate(ev) { return ev.endDate || ev.date; }
+function eventSpansDate(ev, dateStr) { return ev.date <= dateStr && eventEndDate(ev) >= dateStr; }
+function eventsOfDate(dateStr) {
+  return scheduleEvents.filter(ev => eventSpansDate(ev, dateStr))
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
+
+function renderScheduleMonth() {
+  const grid = document.getElementById('scheduleCalendarGrid');
+  if (!grid) return;
+  const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  let html = weekdayNames.map((w, i) => {
+    const cls = i === 0 ? ' sunday-color' : i === 6 ? ' saturday-color' : '';
+    return `<div class="cal-weekday${cls}">${w}</div>`;
+  }).join('');
+
+  const firstDay = new Date(calYear, calMonth - 1, 1);
+  const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  const startWeekday = firstDay.getDay();
+  const today = todayStr();
+
+  for (let i = 0; i < startWeekday; i++) html += '<div class="cal-day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${pad(calMonth)}-${pad(d)}`;
+    const colIndex = (startWeekday + d - 1) % 7;
+    const dayEvents = eventsOfDate(dateStr);
+    const maxShow = 2;
+    const shown = dayEvents.slice(0, maxShow).map(ev => {
+      const cat = scheduleCategoryOf(ev);
+      const colorStyle = cat ? ` style="background:${cat.bg};color:${cat.text}"` : '';
+      const isMulti = eventEndDate(ev) !== ev.date;
+      if (!isMulti) return `<div class="cal-event-chip"${colorStyle}>${escapeHtml(ev.title)}</div>`;
+      const isStart = ev.date === dateStr;
+      const isEnd = eventEndDate(ev) === dateStr;
+      const roundLeft = isStart || colIndex === 0;
+      const roundRight = isEnd || colIndex === 6;
+      const classes = ['cal-event-bar'];
+      if (!roundLeft) classes.push('bar-cont-left');
+      if (!roundRight) classes.push('bar-cont-right');
+      const label = (isStart || colIndex === 0) ? escapeHtml(ev.title) : '';
+      return `<div class="${classes.join(' ')}"${colorStyle}>${label}</div>`;
+    }).join('') + (dayEvents.length > maxShow ? `<div class="cal-event-chip">+${dayEvents.length - maxShow}件</div>` : '');
+
+    const dayPhotos = photosOfDate(dateStr);
+    const thumb = dayPhotos.length ? `<img class="cal-thumb" src="${dayPhotos[0].dataUrl}" alt="">` : '';
+    const marks = [];
+    if (dayPhotos.length > 1) marks.push(`📷${dayPhotos.length}`);
+    if (dayNotes[dateStr] && dayNotes[dateStr].comment) marks.push('✏️');
+    const marksHtml = marks.length ? `<div class="cal-marks">${marks.join(' ')}</div>` : '';
+
+    const classes = ['cal-day'];
+    if (dateStr === today) classes.push('today');
+    const holidayName = holidayNameOf(dateStr);
+    let daynumCls = 'cal-daynum';
+    if (holidayName || colIndex === 0) daynumCls += ' sunday-color';
+    else if (colIndex === 6) daynumCls += ' saturday-color';
+    const titleAttr = holidayName ? ` title="${escapeHtml(holidayName)}"` : '';
+    html += `<div class="${classes.join(' ')}" data-date="${dateStr}"><div class="${daynumCls}"${titleAttr}>${d}</div>${shown}${thumb}${marksHtml}</div>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.cal-day:not(.empty)').forEach(cell => {
+    cell.addEventListener('click', () => openDay(cell.dataset.date));
+  });
+}
+
+function setCalMonth(year, month) {
+  calYear = year; calMonth = month;
+  document.getElementById('scheduleCalYear').value = calYear;
+  document.getElementById('scheduleCalMonth').value = calMonth;
+  renderScheduleMonth();
+}
+document.getElementById('calPrevMonth').addEventListener('click', () => {
+  calMonth === 1 ? setCalMonth(calYear - 1, 12) : setCalMonth(calYear, calMonth - 1);
+});
+document.getElementById('calNextMonth').addEventListener('click', () => {
+  calMonth === 12 ? setCalMonth(calYear + 1, 1) : setCalMonth(calYear, calMonth + 1);
+});
+document.getElementById('calToday').addEventListener('click', () => {
+  const d = new Date(); setCalMonth(d.getFullYear(), d.getMonth() + 1);
+});
+document.getElementById('scheduleCalYear').addEventListener('change', (e) => setCalMonth(parseInt(e.target.value, 10), calMonth));
+document.getElementById('scheduleCalMonth').addEventListener('change', (e) => setCalMonth(calYear, parseInt(e.target.value, 10)));
+
+function showMonthPanel() {
+  document.querySelectorAll('.schedule-subnav button').forEach(b => b.classList.toggle('active', b.dataset.schedule === 'month'));
+  document.querySelectorAll('#tab-calendar .review-panel').forEach(p => p.classList.toggle('active', p.id === 'schedule-month'));
+}
+document.querySelectorAll('.schedule-subnav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.schedule-subnav button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#tab-calendar .review-panel').forEach(p => p.classList.toggle('active', p.id === `schedule-${btn.dataset.schedule}`));
+    if (btn.dataset.schedule === 'year') showScheduleYearReview();
+  });
+});
+
+
+function showScheduleYearReview() {
+  const yearEl = document.getElementById('scheduleYearOnly');
+  if (!yearEl) return;
+  const year = parseInt(yearEl.value || calYear, 10);
+  const container = document.getElementById('scheduleYearResult');
+  const { html, totalSubCols } = buildYearGanttVertical(year);
+  container.innerHTML = `<div class="year-gantt-wrap"><div class="year-gantt-v" style="grid-template-columns: 34px repeat(${totalSubCols}, minmax(82px, 1fr));">${html}</div></div>`;
+  container.querySelectorAll('.gantt-daycell-v:not(.invalid)').forEach(cell => {
+    cell.addEventListener('click', () => openDay(cell.dataset.date));
+  });
+  container.querySelectorAll('.gantt-bar-v').forEach(bar => {
+    bar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDay(bar.dataset.date);
+    });
+  });
+  container.querySelectorAll('.gantt-month-header').forEach(label => {
+    label.addEventListener('click', () => {
+      showMonthPanel();
+      setCalMonth(parseInt(label.dataset.year, 10), parseInt(label.dataset.month, 10));
+    });
+  });
+}
+document.getElementById('scheduleYearShow').addEventListener('click', showScheduleYearReview);
+
+/* ---------- Day screen: photos, comment and schedule for one date ---------- */
+let currentDay = null;
+let pendingPhotos = [];        // photos picked but not saved yet
+let commentDirty = false;
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return toDateStr(d);
+}
+
+function openDay(dateStr) {
+  switchTab('day');
+  currentDay = dateStr;
+  pendingPhotos = [];
+  document.getElementById('pendingList').innerHTML = '';
+  document.getElementById('dayPhotoList').innerHTML = '';
+  commentDirty = false;
+  document.getElementById('commentSavedNote').textContent = '';
+  closeScheduleForm();
+  const [y, m] = dateStr.split('-').map(v => parseInt(v, 10));
+  if (y !== calYear || m !== calMonth) setCalMonth(y, m);
+  renderDay();
+}
+document.getElementById('dayBackBtn').addEventListener('click', () => {
+  if (pendingPhotos.length && !confirm('保存していない写真があります。カレンダーに戻りますか？')) return;
+  showMonthPanel();
+  switchTab('calendar');
+});
+document.getElementById('dayPrevBtn').addEventListener('click', () => moveDay(-1));
+document.getElementById('dayNextBtn').addEventListener('click', () => moveDay(1));
+function moveDay(n) {
+  if (pendingPhotos.length && !confirm('保存していない写真があります。別の日に移りますか？')) return;
+  openDay(addDays(currentDay, n));
+}
+
+function kindOptions(selected) {
+  return Object.entries(KIND_LABELS)
+    .map(([v, label]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${label}</option>`).join('');
+}
+function photoEditHtml(p, key, isPending) {
+  const kind = p.kind || '';
+  return `
+    <div class="photo-edit" data-key="${key}">
+      <img src="${p.dataUrl}" alt="">
+      <div class="fields">
+        <textarea class="f-caption" placeholder="この写真の説明（例：今年初めての開花）">${escapeHtml(p.caption || '')}</textarea>
+        <div class="kind-row">
+          <select class="f-kind">${kindOptions(kind)}</select>
+          <input type="text" class="f-tag" value="${escapeHtml(p.tag || '')}"
+            list="${kind === 'record' ? 'recordTags' : 'gardenTags'}"
+            placeholder="${TAG_PLACEHOLDERS[kind] || ''}" style="${kind ? '' : 'display:none;'}">
+        </div>
+        <div class="row-actions">
+          ${isPending
+            ? '<button class="btn-secondary f-remove">取り消し</button>'
+            : '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button>'}
+        </div>
+      </div>
+    </div>`;
+}
+function readFields(row) {
+  const kind = row.querySelector('.f-kind').value;
+  return {
+    caption: row.querySelector('.f-caption').value.trim(),
+    kind,
+    tag: kind ? row.querySelector('.f-tag').value.trim() : ''
+  };
+}
+function wireKindSelect(row) {
+  const sel = row.querySelector('.f-kind');
+  const tagInput = row.querySelector('.f-tag');
+  sel.addEventListener('change', () => {
+    const kind = sel.value;
+    tagInput.style.display = kind ? '' : 'none';
+    tagInput.placeholder = TAG_PLACEHOLDERS[kind] || '';
+    tagInput.setAttribute('list', kind === 'record' ? 'recordTags' : 'gardenTags');
+    if (kind) tagInput.focus();
+  });
+}
+function validateFields(f) {
+  if (f.kind && !f.tag) {
+    alert(f.kind === 'garden' ? '植物の名前を入れてください（例：バラ）。' : '記録のテーマを入れてください。');
+    return false;
+  }
+  return true;
+}
+
+function renderDay(opts = {}) {
+  if (!currentDay) return;
+  const holiday = holidayNameOf(currentDay);
+  document.getElementById('dayTitle').innerHTML =
+    escapeHtml(formatDateJp(currentDay)) + (holiday ? `<span class="holiday-name">${escapeHtml(holiday)}</span>` : '');
+
+  // Photos already saved. Keep what the user is typing when cloud data refreshes.
+  const list = document.getElementById('dayPhotoList');
+  const dirty = {};
+  list.querySelectorAll('.photo-edit.dirty').forEach(row => { dirty[row.dataset.key] = readFields(row); });
+  const photos = photosOfDate(currentDay);
+  list.innerHTML = photos.length
+    ? photos.map(p => photoEditHtml(dirty[p.id] ? { ...p, ...dirty[p.id] } : p, p.id, false)).join('')
+    : '<div class="empty-state" style="padding:20px;">まだ写真はありません</div>';
+  list.querySelectorAll('.photo-edit').forEach(row => {
+    const id = row.dataset.key;
+    if (dirty[id]) row.classList.add('dirty');
+    row.addEventListener('input', () => row.classList.add('dirty'));
+    row.addEventListener('change', () => row.classList.add('dirty'));
+    wireKindSelect(row);
+    row.querySelector('img').addEventListener('click', () => {
+      openLightbox(photos, photos.findIndex(p => p.id === id));
+    });
+    row.querySelector('.f-save').addEventListener('click', async () => {
+      const f = readFields(row);
+      if (!validateFields(f)) return;
+      const p = allPhotos.find(x => x.id === id);
+      row.classList.remove('dirty');
+      await saveDoc('pd_photos', id, { ...stripId(p), ...f });
+    });
+    row.querySelector('.f-delete').addEventListener('click', async () => {
+      if (!confirm('この写真を削除しますか？')) return;
+      await removeDoc('pd_photos', id);
+    });
+  });
+
+  if (opts.keepComment) syncPendingFromDom();
+  renderPending();
+
+  // Comment
+  const ta = document.getElementById('dayComment');
+  if (!(opts.keepComment && commentDirty)) {
+    ta.value = (dayNotes[currentDay] && dayNotes[currentDay].comment) || '';
+    commentDirty = false;
+  }
+
+  renderDaySchedule();
+}
+function stripId(p) { const { id, ...rest } = p; return rest; }
+
+/* New photos */
+document.getElementById('addPhotoBtn').addEventListener('click', () => document.getElementById('photoInput').click());
+document.getElementById('photoInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  for (const file of files) {
+    let dataUrl = await resizeImage(file, 1280, 0.75);
+    // Keep each photo comfortably under Firestore's 1MB document limit.
+    if (dataUrl.length > 800000) dataUrl = await resizeImage(file, 1024, 0.65);
+    pendingPhotos.push({ dataUrl, caption: '', kind: '', tag: '' });
+  }
+  renderPending();
+});
+function syncPendingFromDom() {
+  document.querySelectorAll('#pendingList .photo-edit').forEach(row => {
+    const idx = parseInt(row.dataset.key, 10);
+    if (pendingPhotos[idx]) Object.assign(pendingPhotos[idx], readFields(row));
+  });
+}
+function renderPending() {
+  const box = document.getElementById('pendingBox');
+  const list = document.getElementById('pendingList');
+  box.style.display = pendingPhotos.length ? '' : 'none';
+  list.innerHTML = pendingPhotos.map((p, i) => photoEditHtml(p, i, true)).join('');
+  list.querySelectorAll('.photo-edit').forEach(row => {
+    wireKindSelect(row);
+    row.querySelector('img').addEventListener('click', () => openLightbox(pendingPhotos, parseInt(row.dataset.key, 10)));
+    row.querySelector('.f-remove').addEventListener('click', () => {
+      syncPendingFromDom();
+      pendingPhotos.splice(parseInt(row.dataset.key, 10), 1);
+      renderPending();
+    });
+  });
+}
+document.getElementById('pendingCancelBtn').addEventListener('click', () => {
+  pendingPhotos = [];
+  renderPending();
+});
+document.getElementById('pendingSaveBtn').addEventListener('click', async (e) => {
+  syncPendingFromDom();
+  for (const p of pendingPhotos) if (!validateFields(p)) return;
+  const btn = e.currentTarget;
+  btn.disabled = true; btn.textContent = '保存中…';
+  const existing = photosOfDate(currentDay);
+  let order = existing.reduce((m, p) => Math.max(m, p.order || 0), 0);
+  const toSave = pendingPhotos;
+  pendingPhotos = [];
+  for (const p of toSave) {
+    order++;
+    const ok = await saveDoc('pd_photos', uid(), {
+      date: currentDay, dataUrl: p.dataUrl, caption: p.caption, kind: p.kind, tag: p.tag,
+      order, createdAt: Date.now()
+    });
+    if (!ok) { pendingPhotos.push(p); }
+  }
+  btn.disabled = false; btn.textContent = '写真を保存する';
+  renderPending();
+});
+
+/* Comment */
+document.getElementById('dayComment').addEventListener('input', () => {
+  commentDirty = true;
+  document.getElementById('commentSavedNote').textContent = '';
+});
+document.getElementById('saveCommentBtn').addEventListener('click', async () => {
+  const comment = document.getElementById('dayComment').value.trim();
+  const ok = comment
+    ? await saveDoc('pd_days', currentDay, { date: currentDay, comment, updatedAt: Date.now() })
+    : (dayNotes[currentDay] ? await removeDoc('pd_days', currentDay) : true);
+  if (ok) {
+    commentDirty = false;
+    document.getElementById('commentSavedNote').textContent = '保存しました';
+  }
+});
+
+/* Schedule for the day (same fields as Diary's 予定 page) */
+function closeScheduleForm() {
+  document.getElementById('scheduleEntryForm').classList.remove('open');
+  document.getElementById('addScheduleBtn').style.display = '';
+}
+function openScheduleForm(ev) {
+  document.getElementById('scheduleEditingId').value = ev ? ev.id : '';
+  document.getElementById('scheduleStartDate').value = ev ? ev.date : currentDay;
+  document.getElementById('scheduleEndDate').value = ev && eventEndDate(ev) !== ev.date ? eventEndDate(ev) : '';
+  document.getElementById('scheduleCategorySelect').value = ev ? (ev.categoryId || '') : '';
+  document.getElementById('scheduleEntryTitle').value = ev ? (ev.title || '') : '';
+  document.getElementById('scheduleEntryNote').value = ev ? (ev.note || '') : '';
+  document.getElementById('scheduleEntryForm').classList.add('open');
+  document.getElementById('addScheduleBtn').style.display = 'none';
+  document.getElementById('scheduleEntryForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function renderDaySchedule() {
+  const panel = document.getElementById('scheduleDayPanel');
+  const dayEvents = eventsOfDate(currentDay);
+  panel.innerHTML = dayEvents.length ? '' : '<div class="collection-sub">予定はありません</div>';
+  for (const ev of dayEvents) {
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.dataset.section = 'schedule';
+    const rangeLabel = eventEndDate(ev) !== ev.date
+      ? `${formatDateJp(ev.date)} 〜 ${formatDateJp(eventEndDate(ev))}`
+      : formatDateJp(ev.date);
+    const cat = scheduleCategoryOf(ev);
+    const catBadge = cat ? `<span class="schedule-category-badge" style="background:${cat.bg};color:${cat.text}">${escapeHtml(cat.name)}</span>` : '';
+    card.innerHTML = `
+      <div class="entry-date">🗓️ ${rangeLabel}${catBadge}</div>
+      <div class="entry-title">${escapeHtml(ev.title)}</div>
+      ${ev.note ? `<div class="entry-body">${escapeHtml(ev.note)}</div>` : ''}
+      <div class="entry-actions">
+        <button class="btn-secondary sched-edit-btn">編集</button>
+        <button class="btn-danger sched-delete-btn">削除</button>
+      </div>
+    `;
+    card.querySelector('.sched-edit-btn').addEventListener('click', () => openScheduleForm(ev));
+    card.querySelector('.sched-delete-btn').addEventListener('click', async () => {
+      if (!confirm('この予定を削除しますか？')) return;
+      await removeDoc('schedule', ev.id);
+    });
+    panel.appendChild(card);
+  }
+}
+document.getElementById('addScheduleBtn').addEventListener('click', () => openScheduleForm(null));
+document.getElementById('scheduleCancelBtn').addEventListener('click', closeScheduleForm);
+document.getElementById('scheduleSaveBtn').addEventListener('click', async () => {
+  const startDate = document.getElementById('scheduleStartDate').value;
+  const endDateInput = document.getElementById('scheduleEndDate').value;
+  const categoryId = document.getElementById('scheduleCategorySelect').value;
+  const title = document.getElementById('scheduleEntryTitle').value.trim();
+  const note = document.getElementById('scheduleEntryNote').value.trim();
+  if (!startDate) { alert('開始日を入力してください。'); return; }
+  if (!title) { alert('タイトルを入力してください。'); return; }
+  const endDate = endDateInput || startDate;
+  if (endDate < startDate) { alert('終了日は開始日より後の日付にしてください。'); return; }
+  const editingId = document.getElementById('scheduleEditingId').value;
+  const id = editingId || uid();
+  const existing = editingId ? scheduleEvents.find(e => e.id === id) : null;
+  const ok = await saveDoc('schedule', id, {
+    date: startDate, endDate, categoryId, title, note,
+    createdAt: existing ? existing.createdAt : Date.now()
+  });
+  if (ok) closeScheduleForm();
+});
+
+/* ---------- 園芸 / 記録: photos grouped by plant or theme ---------- */
+const colState = {
+  garden: { tag: null, view: 'timeline', newestFirst: false },
+  record: { tag: null, view: 'timeline', newestFirst: false }
+};
+const COL_TEXT = {
+  garden: {
+    intro: '日付の画面で写真を追加するときに「🌹 園芸」を選んで植物の名前を入れると、ここに植物ごとの成長記録としてまとまります。',
+    empty: 'まだ園芸の写真はありません'
+  },
+  record: {
+    intro: '日付の画面で写真を追加するときに「📚 記録」を選んでテーマ（料理・手芸・お出かけなど）を入れると、ここにテーマごとにまとまります。',
+    empty: 'まだ記録の写真はありません'
+  }
+};
+function shortDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(v => parseInt(v, 10));
+  return `${y}/${m}/${d}`;
+}
+function daysBetween(a, b) {
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+}
+function withDateCaption(photos) {
+  return photos.map(p => ({ ...p, caption: `${shortDate(p.date)}　${p.caption || ''}` }));
+}
+
+function renderCollection(kind) {
+  const body = document.getElementById(kind === 'garden' ? 'gardenBody' : 'recordBody');
+  const st = colState[kind];
+  const tags = tagsOf(kind);
+  if (st.tag && !tags.has(st.tag)) st.tag = null;
+
+  if (!st.tag) {
+    const entries = Array.from(tags.entries()).map(([tag, photos]) => {
+      photos.sort((a, b) => a.date.localeCompare(b.date));
+      return { tag, photos, first: photos[0].date, last: photos[photos.length - 1].date };
+    }).sort((a, b) => b.last.localeCompare(a.last));
+    body.innerHTML = `
+      <p class="collection-intro">${COL_TEXT[kind].intro}</p>
+      ${entries.length ? `<div class="tag-grid">${entries.map(e => `
+        <button class="tag-card" data-tag="${escapeHtml(e.tag)}">
+          <img src="${e.photos[e.photos.length - 1].dataUrl}" alt="">
+          <div class="tag-info">
+            <div class="tag-name">${escapeHtml(e.tag)}</div>
+            <div class="tag-meta">${e.photos.length}枚・${shortDate(e.first)}〜${shortDate(e.last)}</div>
+          </div>
+        </button>`).join('')}</div>`
+        : `<div class="empty-state">${COL_TEXT[kind].empty}</div>`}
+    `;
+    body.querySelectorAll('.tag-card').forEach(card => {
+      card.addEventListener('click', () => {
+        st.tag = card.dataset.tag;
+        renderCollection(kind);
+        window.scrollTo(0, 0);
+      });
+    });
+    return;
+  }
+
+  const photos = photosOfTag(kind, st.tag);
+  const first = photos[0].date, last = photos[photos.length - 1].date;
+  const ordered = st.newestFirst ? photos.slice().reverse() : photos;
+  const lightboxList = withDateCaption(ordered);
+
+  let content = '';
+  if (st.view === 'grid') {
+    content = `<div class="photo-grid">${ordered.map((p, i) => `
+      <figure><img data-idx="${i}" src="${p.dataUrl}" alt=""><figcaption>${shortDate(p.date)}</figcaption></figure>`).join('')}</div>`;
+  } else {
+    const byDate = [];
+    ordered.forEach((p, i) => {
+      if (!byDate.length || byDate[byDate.length - 1].date !== p.date) byDate.push({ date: p.date, items: [] });
+      byDate[byDate.length - 1].items.push({ p, i });
+    });
+    content = `<div class="timeline">${byDate.map(g => `
+      <div class="timeline-day">
+        <div class="timeline-date" data-date="${g.date}">${formatDateJp(g.date)}<span class="ago">${daysBetween(first, g.date) + 1}日目</span></div>
+        ${g.items.map(({ p, i }) => `
+          <div class="timeline-photo"><img data-idx="${i}" src="${p.dataUrl}" alt=""><div class="cap">${escapeHtml(p.caption || '')}</div></div>`).join('')}
+      </div>`).join('')}</div>`;
+  }
+
+  body.innerHTML = `
+    <div class="collection-head">
+      <button class="btn-secondary" data-act="back">‹ 一覧へ</button>
+      <h2>${kind === 'garden' ? '🌹' : '📚'} ${escapeHtml(st.tag)}</h2>
+      <button class="btn-secondary" data-act="rename">名前を変える</button>
+    </div>
+    <div class="collection-sub">${photos.length}枚・${formatDateJp(first)}から${daysBetween(first, last) + 1}日間の記録</div>
+    <div class="view-toggle">
+      <button data-view="timeline" class="${st.view === 'timeline' ? 'active' : ''}">成長の記録</button>
+      <button data-view="grid" class="${st.view === 'grid' ? 'active' : ''}">写真を一覧で</button>
+      <button data-act="order">${st.newestFirst ? '新しい順 ⇅' : '古い順 ⇅'}</button>
+    </div>
+    ${content}
+  `;
+  body.querySelector('[data-act="back"]').addEventListener('click', () => { st.tag = null; renderCollection(kind); });
+  body.querySelector('[data-act="order"]').addEventListener('click', () => { st.newestFirst = !st.newestFirst; renderCollection(kind); });
+  body.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { st.view = b.dataset.view; renderCollection(kind); }));
+  body.querySelector('[data-act="rename"]').addEventListener('click', async () => {
+    const name = (prompt('新しい名前', st.tag) || '').trim();
+    if (!name || name === st.tag) return;
+    const targets = photosOfTag(kind, st.tag);
+    st.tag = name;
+    for (const p of targets) await saveDoc('pd_photos', p.id, { ...stripId(p), tag: name });
+  });
+  body.querySelectorAll('img[data-idx]').forEach(img => {
+    img.addEventListener('click', () => openLightbox(lightboxList, parseInt(img.dataset.idx, 10)));
+  });
+  body.querySelectorAll('.timeline-date').forEach(el => el.addEventListener('click', () => openDay(el.dataset.date)));
+}
+
+function updateTagLists() {
+  for (const kind of ['garden', 'record']) {
+    document.getElementById(`${kind}Tags`).innerHTML =
+      Array.from(tagsOf(kind).keys()).sort().map(t => `<option value="${escapeHtml(t)}"></option>`).join('');
+  }
+}
+
+/* ---------- Lightbox ---------- */
+let lightboxPhotos = [];
+let lightboxIndex = 0;
+function updateLightbox() {
+  const p = lightboxPhotos[lightboxIndex];
+  document.getElementById('lightboxImg').src = p.dataUrl;
+  document.getElementById('lightboxCaption').textContent = p.caption || '';
+}
+function openLightbox(photos, idx) {
+  if (!photos.length || idx < 0) return;
+  lightboxPhotos = photos;
+  lightboxIndex = idx;
+  updateLightbox();
+  document.getElementById('lightbox').classList.add('open');
+}
+document.getElementById('lightboxClose').addEventListener('click', () => {
+  document.getElementById('lightbox').classList.remove('open');
+});
+document.getElementById('lightboxPrev').addEventListener('click', () => {
+  lightboxIndex = (lightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
+  updateLightbox();
+});
+document.getElementById('lightboxNext').addEventListener('click', () => {
+  lightboxIndex = (lightboxIndex + 1) % lightboxPhotos.length;
+  updateLightbox();
+});
+
+/* ---------- Backup (safety export, cloud remains source of truth) ---------- */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const payload = { photos: allPhotos, days: dayNotes, scheduleEvents, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `photo-diary-backup-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+renderScheduleMonth();
+renderCollection('garden');
+renderCollection('record');
+</script>
+</body>
+</html>
