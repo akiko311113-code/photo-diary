@@ -313,9 +313,7 @@
   .nav-btn.active[data-tab="record"] { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
   #tab-calendar .btn-primary { background: var(--accent-schedule); box-shadow: 0 3px 0 var(--accent-schedule-dark); }
 
-  .cal-thumb { width: 100%; height: 30px; object-fit: cover; border-radius: 6px; margin-top: auto; }
-  .cal-marks { font-size: 0.6rem; line-height: 1; margin-top: auto; }
-  .cal-thumb + .cal-marks { margin-top: 2px; }
+  .cal-marks { font-size: 0.7rem; line-height: 1.2; margin-top: auto; word-break: break-all; }
 
   .day-head { display: flex; align-items: center; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
   .day-head .day-title { order: -1; flex-basis: 100%; text-align: center; font-weight: 800; font-size: 1.15rem; color: var(--accent-dark); }
@@ -364,7 +362,6 @@
   @media (max-width: 480px) {
     .photo-edit { grid-template-columns: 90px 1fr; }
     .photo-edit img { width: 90px; height: 90px; }
-    .cal-thumb { height: 22px; }
   }
 
   .collection-intro { color: var(--sub); font-size: 0.85rem; line-height: 1.7; margin: 16px 0; }
@@ -451,7 +448,8 @@
       </div>
       <div class="category-legend" id="scheduleCategoryLegend"></div>
       <div class="calendar-grid" id="scheduleCalendarGrid"></div>
-      <p class="collection-intro">日付をタップすると、その日の写真・コメント・予定を記録できます。</p>
+      <p class="collection-intro">日付をタップすると、その日の写真・コメント・予定を記録できます。<br>
+        印の意味：📷 日々の写真　🌹 園芸の写真　📚 記録の写真　✏️ コメント（数字は枚数）</p>
     </div>
 
     <div class="review-panel" id="schedule-year">
@@ -968,9 +966,11 @@ function renderScheduleMonth() {
     }).join('') + (dayEvents.length > maxShow ? `<div class="cal-event-chip">+${dayEvents.length - maxShow}件</div>` : '');
 
     const dayPhotos = photosOfDate(dateStr);
-    const thumb = dayPhotos.length ? `<img class="cal-thumb" src="${dayPhotos[0].dataUrl}" alt="">` : '';
     const marks = [];
-    if (dayPhotos.length > 1) marks.push(`📷${dayPhotos.length}`);
+    for (const [kind, icon] of [['', '📷'], ['garden', '🌹'], ['record', '📚']]) {
+      const n = dayPhotos.filter(p => (p.kind || '') === kind).length;
+      if (n) marks.push(n > 1 ? `${icon}${n}` : icon);
+    }
     if (dayNotes[dateStr] && dayNotes[dateStr].comment) marks.push('✏️');
     const marksHtml = marks.length ? `<div class="cal-marks">${marks.join(' ')}</div>` : '';
 
@@ -981,7 +981,7 @@ function renderScheduleMonth() {
     if (holidayName || colIndex === 0) daynumCls += ' sunday-color';
     else if (colIndex === 6) daynumCls += ' saturday-color';
     const titleAttr = holidayName ? ` title="${escapeHtml(holidayName)}"` : '';
-    html += `<div class="${classes.join(' ')}" data-date="${dateStr}"><div class="${daynumCls}"${titleAttr}>${d}</div>${shown}${thumb}${marksHtml}</div>`;
+    html += `<div class="${classes.join(' ')}" data-date="${dateStr}"><div class="${daynumCls}"${titleAttr}>${d}</div>${shown}${marksHtml}</div>`;
   }
   grid.innerHTML = html;
   grid.querySelectorAll('.cal-day:not(.empty)').forEach(cell => {
