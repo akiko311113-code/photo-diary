@@ -722,7 +722,8 @@ function buildYearGanttVertical(year) {
     const daysInMonth = new Date(year, m, 0).getDate();
     const monthStart = `${year}-${pad(m)}-01`;
     const monthEnd = `${year}-${pad(m)}-${pad(daysInMonth)}`;
-    const yearViewCategoryIds = new Set(SCHEDULE_CATEGORIES.slice(0, 4).map(c => c.id));
+    // 理美容・コーヒー豆 (cat5) stays off the year view.
+    const yearViewCategoryIds = new Set(SCHEDULE_CATEGORIES.filter(c => c.id !== 'cat5').map(c => c.id));
     const events = scheduleEvents
       .filter(ev => yearViewCategoryIds.has(ev.categoryId) && eventEndDate(ev) >= monthStart && ev.date <= monthEnd)
       .sort((a, b) => a.date.localeCompare(b.date));
