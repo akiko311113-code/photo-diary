@@ -475,7 +475,9 @@
         </div>
       </div>
       <div class="section-actions">
+        <button class="btn-secondary" id="takePhotoBtn">📷 その場で撮影</button>
         <button class="btn-primary" id="addPhotoBtn">＋ 写真を追加</button>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
         <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
       </div>
     </div>
@@ -1164,7 +1166,8 @@ function stripId(p) { const { id, ...rest } = p; return rest; }
 
 /* New photos */
 document.getElementById('addPhotoBtn').addEventListener('click', () => document.getElementById('photoInput').click());
-document.getElementById('photoInput').addEventListener('change', async (e) => {
+document.getElementById('takePhotoBtn').addEventListener('click', () => document.getElementById('cameraInput').click());
+async function addPickedPhotos(e) {
   const files = Array.from(e.target.files || []);
   e.target.value = '';
   for (const file of files) {
@@ -1174,7 +1177,9 @@ document.getElementById('photoInput').addEventListener('change', async (e) => {
     pendingPhotos.push({ dataUrl, caption: '', kind: '', tag: '' });
   }
   renderPending();
-});
+}
+document.getElementById('photoInput').addEventListener('change', addPickedPhotos);
+document.getElementById('cameraInput').addEventListener('change', addPickedPhotos);
 function syncPendingFromDom() {
   document.querySelectorAll('#pendingList .photo-edit').forEach(row => {
     const idx = parseInt(row.dataset.key, 10);
