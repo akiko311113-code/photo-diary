@@ -188,7 +188,7 @@
     padding: 9px 12px; border: 2px solid var(--border-schedule); border-radius: 10px; font-size: 0.9rem;
   }
   .cal-controls button { background: #fff; border: 2px solid var(--border-schedule); color: var(--accent-schedule-dark); }
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 20px; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 20px; }
   .cal-weekday { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--sub); padding: 4px 0; }
   .cal-day {
     background: #fff; border: 2px solid var(--border-schedule); border-radius: 10px;
@@ -773,7 +773,7 @@ function buildYearGanttVertical(year) {
       const color = cat ? cat.text : '#ffffff';
       html += `<div class="gantt-bar-v" data-date="${ev.date}"
         style="grid-column:${mi.startCol + track};grid-row:${startDay + 1} / span ${endDay - startDay + 1};background:${bg};color:${color};"
-        title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</div>`;
+        title="${escapeHtml(eventLabel(ev))}">${escapeHtml(eventLabel(ev))}</div>`;
     }
   }
   return { html, totalSubCols };
@@ -895,10 +895,15 @@ const SCHEDULE_CATEGORIES = [
   { id: 'cat4', name: '来客訪問', bg: '#d64545', text: '#ffffff' },
   { id: 'cat2', name: '帰岡', bg: '#4a5fc1', text: '#ffffff' },
   { id: 'cat5', name: '理美容・コーヒー豆', bg: '#f39c3d', text: '#ffffff' },
-  { id: 'cat6', name: '病院・健康', bg: '#e5739d', text: '#ffffff' },
-  { id: 'cat7', name: 'イベント', bg: '#b8901a', text: '#ffffff' }
+  { id: 'cat6', name: '病院・健康', bg: '#5f8fae', text: '#ffffff' },
+  { id: 'cat7', name: 'イベント', bg: 'linear-gradient(90deg, #ff5fa2, #ffa94d)', text: '#ffffff' }
 ];
 function scheduleCategoryOf(ev) { return SCHEDULE_CATEGORIES.find(c => c.id === ev.categoryId) || null; }
+// Title as shown on the calendar; birthdays get a cake mark.
+function eventLabel(ev) {
+  const title = ev.title || '';
+  return /誕生日|バースデー/.test(title) ? `🎂 ${title}` : title;
+}
 
 function populateScheduleControls() {
   const y = new Date().getFullYear();
@@ -953,7 +958,7 @@ function renderScheduleMonth() {
       const cat = scheduleCategoryOf(ev);
       const colorStyle = cat ? ` style="background:${cat.bg};color:${cat.text}"` : '';
       const isMulti = eventEndDate(ev) !== ev.date;
-      if (!isMulti) return `<div class="cal-event-chip"${colorStyle}>${escapeHtml(ev.title)}</div>`;
+      if (!isMulti) return `<div class="cal-event-chip"${colorStyle}>${escapeHtml(eventLabel(ev))}</div>`;
       const isStart = ev.date === dateStr;
       const isEnd = eventEndDate(ev) === dateStr;
       const roundLeft = isStart || colIndex === 0;
@@ -961,7 +966,7 @@ function renderScheduleMonth() {
       const classes = ['cal-event-bar'];
       if (!roundLeft) classes.push('bar-cont-left');
       if (!roundRight) classes.push('bar-cont-right');
-      const label = (isStart || colIndex === 0) ? escapeHtml(ev.title) : '';
+      const label = (isStart || colIndex === 0) ? escapeHtml(eventLabel(ev)) : '';
       return `<div class="${classes.join(' ')}"${colorStyle}>${label}</div>`;
     }).join('') + (dayEvents.length > maxShow ? `<div class="cal-event-chip">+${dayEvents.length - maxShow}件</div>` : '');
 
@@ -1336,7 +1341,7 @@ function renderDaySchedule() {
     const catBadge = cat ? `<span class="schedule-category-badge" style="background:${cat.bg};color:${cat.text}">${escapeHtml(cat.name)}</span>` : '';
     card.innerHTML = `
       <div class="entry-date">🗓️ ${rangeLabel}${catBadge}</div>
-      <div class="entry-title">${escapeHtml(ev.title)}</div>
+      <div class="entry-title">${escapeHtml(eventLabel(ev))}</div>
       ${ev.note ? `<div class="entry-body">${escapeHtml(ev.note)}</div>` : ''}
       <div class="entry-actions">
         <button class="btn-secondary sched-edit-btn">編集</button>
