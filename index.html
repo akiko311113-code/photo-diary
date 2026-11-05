@@ -265,6 +265,15 @@
   .backup-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
   .backup-actions button { background: #fff; border: 2px solid var(--accent-backup); color: var(--accent-backup); }
 
+  .camera-modal {
+    display: none; position: fixed; inset: 0; background: rgba(20, 12, 16, 0.9);
+    z-index: 1000; align-items: center; justify-content: center; flex-direction: column; gap: 14px; padding: 20px;
+  }
+  .camera-modal.open { display: flex; }
+  .camera-modal video { max-width: 90vw; max-height: 70vh; border-radius: 12px; background: #000; }
+  .camera-modal .camera-actions { display: flex; gap: 10px; }
+  .camera-modal .camera-note { color: #fff; font-size: 0.9rem; min-height: 1.2em; }
+
   .lightbox {
     display: none; position: fixed; inset: 0; background: rgba(20, 12, 16, 0.9);
     z-index: 1000; align-items: center; justify-content: center; flex-direction: column; padding: 20px;
@@ -545,6 +554,16 @@
 
 <datalist id="gardenTags"></datalist>
 <datalist id="recordTags"></datalist>
+
+<!-- In-page camera for computers (phones use the camera input instead) -->
+<div class="camera-modal" id="cameraModal">
+  <video id="cameraVideo" autoplay playsinline muted></video>
+  <div class="camera-note" id="cameraNote"></div>
+  <div class="camera-actions">
+    <button class="btn-secondary" id="cameraCloseBtn">閉じる</button>
+    <button class="btn-primary" id="cameraShutterBtn">📷 撮影する</button>
+  </div>
+</div>
 
 <div class="lightbox" id="lightbox">
   <button class="lightbox-close" id="lightboxClose">✕</button>
@@ -1166,10 +1185,7 @@ function stripId(p) { const { id, ...rest } = p; return rest; }
 
 /* New photos */
 document.getElementById('addPhotoBtn').addEventListener('click', () => document.getElementById('photoInput').click());
-document.getElementById('takePhotoBtn').addEventListener('click', () => document.getElementById('cameraInput').click());
-async function addPickedPhotos(e) {
-  const files = Array.from(e.target.files || []);
-  e.target.value = '';
+async function addFiles(files) {
   for (const file of files) {
     let dataUrl = await resizeImage(file, 1280, 0.75);
     // Keep each photo comfortably under Firestore's 1MB document limit.
@@ -1178,8 +1194,55 @@ async function addPickedPhotos(e) {
   }
   renderPending();
 }
+function addPickedPhotos(e) {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  addFiles(files);
+}
 document.getElementById('photoInput').addEventListener('change', addPickedPhotos);
 document.getElementById('cameraInput').addEventListener('change', addPickedPhotos);
+
+/* Camera: phones open their camera app through the file input; computers
+   show the webcam inside the page, since a web page cannot launch the
+   computer's camera app. */
+let cameraStream = null;
+let cameraShots = 0;
+const isPhone = window.matchMedia('(pointer: coarse)').matches;
+document.getElementById('takePhotoBtn').addEventListener('click', async () => {
+  if (isPhone || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+    document.getElementById('cameraInput').click();
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (err) {
+    alert('カメラを使えませんでした。ブラウザでカメラの使用を「許可」にしてください。\n（' + err.message + '）');
+    return;
+  }
+  cameraShots = 0;
+  document.getElementById('cameraNote').textContent = '';
+  document.getElementById('cameraVideo').srcObject = cameraStream;
+  document.getElementById('cameraModal').classList.add('open');
+});
+function closeCamera() {
+  if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+  cameraStream = null;
+  document.getElementById('cameraVideo').srcObject = null;
+  document.getElementById('cameraModal').classList.remove('open');
+}
+document.getElementById('cameraCloseBtn').addEventListener('click', closeCamera);
+document.getElementById('cameraShutterBtn').addEventListener('click', () => {
+  const video = document.getElementById('cameraVideo');
+  if (!video.videoWidth) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(async (blob) => {
+    await addFiles([new File([blob], 'camera.jpg', { type: 'image/jpeg' })]);
+    cameraShots++;
+    document.getElementById('cameraNote').textContent = `${cameraShots}枚撮りました（「閉じる」で説明の入力へ）`;
+  }, 'image/jpeg', 0.92);
+});
 function syncPendingFromDom() {
   document.querySelectorAll('#pendingList .photo-edit').forEach(row => {
     const idx = parseInt(row.dataset.key, 10);
