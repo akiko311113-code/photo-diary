@@ -1076,6 +1076,7 @@ function buildDaySections() {
         <div class="section-actions">
           <span class="saved-note" data-saved="${s.key}"></span>
           <button class="btn-primary" data-save-comment="${s.key}">コメントを保存</button>
+          <button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>
         </div>
       </div>`;
     const photos = `
@@ -1087,6 +1088,7 @@ function buildDaySections() {
           <div class="section-actions">
             <button class="btn-secondary" data-pending-cancel="${s.key}">やめる</button>
             <button class="btn-primary" data-pending-save="${s.key}">写真を保存する</button>
+            <button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>
           </div>
         </div>
         <div class="section-actions">
@@ -1137,10 +1139,15 @@ function openDay(dateStr) {
   if (y !== calYear || m !== calMonth) setCalMonth(y, m);
   renderDay();
 }
-document.getElementById('dayBackBtn').addEventListener('click', () => {
+function backToCalendar() {
   if (hasPending() && !confirm('保存していない写真があります。カレンダーに戻りますか？')) return;
   showMonthPanel();
   switchTab('calendar');
+}
+document.getElementById('dayBackBtn').addEventListener('click', backToCalendar);
+// "カレンダーに戻る" buttons beside the save buttons are re-rendered often, so delegate.
+document.getElementById('tab-day').addEventListener('click', (e) => {
+  if (e.target.closest('.back-to-cal')) backToCalendar();
 });
 document.getElementById('dayPrevBtn').addEventListener('click', () => moveDay(-1));
 document.getElementById('dayNextBtn').addEventListener('click', () => moveDay(1));
@@ -1169,7 +1176,7 @@ function photoEditHtml(p, key, isPending) {
         <div class="row-actions">
           ${isPending
             ? '<button class="btn-secondary f-remove">取り消し</button>'
-            : '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button>'}
+            : '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button><button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>'}
         </div>
       </div>
     </div>`;
