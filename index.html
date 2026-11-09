@@ -310,7 +310,18 @@
 
   /* ---------- Photo diary additions ---------- */
   .nav-btn.active[data-tab="calendar"] { background: var(--accent-schedule); border-color: var(--accent-schedule); color: #fff; }
-  .nav-btn.active[data-tab="record"] { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  .nav-btn.active[data-tab="daily"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-btn.active[data-tab="learn"] { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  .day-section.sec-garden { border-color: var(--border-garden); }
+  .day-section.sec-garden h2 { color: var(--accent-garden-dark); }
+  .day-section.sec-learn { border-color: #e2d9fd; }
+  .day-section.sec-learn h2 { color: #7c5cd6; }
+  .sec-comment + .sec-photos, .sec-photos + .sec-comment { margin-top: 14px; }
+  .sec-photos .photo-edit-list:not(:empty) { margin-bottom: 4px; }
+  .timeline-comment {
+    font-size: 0.92rem; line-height: 1.7; white-space: pre-wrap; background: #fff;
+    border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
+  }
   #tab-calendar .btn-primary { background: var(--accent-schedule); box-shadow: 0 3px 0 var(--accent-schedule-dark); }
 
   .cal-marks { font-size: 0.7rem; line-height: 1.2; margin-top: auto; word-break: break-all; }
@@ -370,7 +381,7 @@
     background: #fff; border: 2px solid var(--border-garden); border-radius: 16px; overflow: hidden;
     cursor: pointer; text-align: left; padding: 0; font-weight: 400; color: var(--text);
   }
-  #tab-record .tag-card { border-color: #e2d9fd; }
+  #tab-learn .tag-card { border-color: #e2d9fd; }
   .tag-card img { width: 100%; height: 120px; object-fit: cover; display: block; }
   .tag-card .tag-info { padding: 10px 12px; }
   .tag-card .tag-name { font-weight: 800; font-size: 0.95rem; }
@@ -382,18 +393,18 @@
   .view-toggle { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
   .view-toggle button { background: #fff; border: 2px solid var(--border-garden); color: var(--accent-garden-dark); padding: 6px 14px; font-size: 0.8rem; box-shadow: none; }
   .view-toggle button.active { background: var(--accent-garden); border-color: var(--accent-garden); color: #fff; }
-  #tab-record .view-toggle button { border-color: #e2d9fd; color: #7c5cd6; }
-  #tab-record .view-toggle button.active { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
+  #tab-learn .view-toggle button { border-color: #e2d9fd; color: #7c5cd6; }
+  #tab-learn .view-toggle button.active { background: var(--accent-review); border-color: var(--accent-review); color: #fff; }
   .timeline { border-left: 3px solid var(--border-garden); margin-left: 8px; padding-left: 16px; }
-  #tab-record .timeline { border-color: #e2d9fd; }
+  #tab-learn .timeline { border-color: #e2d9fd; }
   .timeline-day { margin-bottom: 22px; position: relative; }
   .timeline-day::before {
     content: ""; position: absolute; left: -24px; top: 4px; width: 13px; height: 13px; border-radius: 50%;
     background: var(--accent-garden);
   }
-  #tab-record .timeline-day::before { background: var(--accent-review); }
+  #tab-learn .timeline-day::before { background: var(--accent-review); }
   .timeline-date { font-size: 0.85rem; font-weight: 800; color: var(--accent-garden-dark); cursor: pointer; margin-bottom: 8px; }
-  #tab-record .timeline-date { color: #7c5cd6; }
+  #tab-learn .timeline-date { color: #7c5cd6; }
   .timeline-date .ago { font-weight: 400; color: var(--sub); font-size: 0.75rem; margin-left: 6px; }
   .timeline-photo { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
   .timeline-photo img { width: 160px; height: 160px; object-fit: cover; border-radius: 12px; cursor: zoom-in; flex-shrink: 0; }
@@ -426,7 +437,8 @@
 <nav class="tabs">
   <button class="nav-btn active" data-tab="calendar">🗓️ カレンダー</button>
   <button class="nav-btn" data-tab="garden">🌹 園芸</button>
-  <button class="nav-btn" data-tab="record">📚 記録</button>
+  <button class="nav-btn" data-tab="daily">📝 日々のこと</button>
+  <button class="nav-btn" data-tab="learn">📚 学び</button>
   <button class="nav-btn" data-tab="backup">💾 バックアップ</button>
 </nav>
 
@@ -449,7 +461,7 @@
       <div class="category-legend" id="scheduleCategoryLegend"></div>
       <div class="calendar-grid" id="scheduleCalendarGrid"></div>
       <p class="collection-intro">日付をタップすると、その日の写真・コメント・予定を記録できます。<br>
-        印の意味：📷 日々の写真　🌹 園芸の写真　📚 記録の写真　✏️ コメント（数字は枚数）</p>
+        印の意味：🌹 園芸　📝 日々のこと　📚 学び（数字は写真の枚数）</p>
     </div>
 
     <div class="review-panel" id="schedule-year">
@@ -470,33 +482,9 @@
       <button class="btn-secondary" id="dayNextBtn">次の日</button>
     </div>
 
-    <div class="day-section">
-      <h2>📷 この日の写真</h2>
-      <div class="photo-edit-list" id="dayPhotoList"></div>
-      <div class="pending-box" id="pendingBox" style="display:none;">
-        <div class="pending-label">新しく追加する写真（説明と分類を入れて「保存する」）</div>
-        <div class="photo-edit-list" id="pendingList"></div>
-        <div class="section-actions">
-          <button class="btn-secondary" id="pendingCancelBtn">やめる</button>
-          <button class="btn-primary" id="pendingSaveBtn">写真を保存する</button>
-        </div>
-      </div>
-      <div class="section-actions">
-        <button class="btn-secondary" id="takePhotoBtn">📷 その場で撮影</button>
-        <button class="btn-primary" id="addPhotoBtn">＋ 写真を追加</button>
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-        <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
-      </div>
-    </div>
-
-    <div class="day-section">
-      <h2>✏️ この日のコメント</h2>
-      <textarea id="dayComment" placeholder="今日のできごとや、思ったことを自由に"></textarea>
-      <div class="section-actions">
-        <span class="saved-note" id="commentSavedNote"></span>
-        <button class="btn-primary" id="saveCommentBtn">コメントを保存</button>
-      </div>
-    </div>
+    <div id="daySections"></div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+    <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
 
     <div class="day-section schedule-section">
       <h2>🗓️ この日の予定</h2>
@@ -528,8 +516,12 @@
     <div id="gardenBody"></div>
   </section>
 
-  <section id="tab-record" class="tab-panel">
-    <div id="recordBody"></div>
+  <section id="tab-daily" class="tab-panel">
+    <div id="dailyBody"></div>
+  </section>
+
+  <section id="tab-learn" class="tab-panel">
+    <div id="learnBody"></div>
   </section>
 
   <section id="tab-backup" class="tab-panel">
@@ -792,12 +784,23 @@ async function removeDoc(col, id) {
 
 /* ---------- Cloud data cache (kept in sync by Firestore listeners) ---------- */
 let allPhotos = [];      // pd_photos: { date, dataUrl, caption, kind: ''|'garden'|'record', tag, order, createdAt }
-let dayNotes = {};       // pd_days: keyed by date -> { date, comment, updatedAt }
+let dayNotes = {};       // pd_days: keyed by date -> { date, garden, comment (日々のこと), learn, updatedAt }
 let scheduleEvents = []; // schedule (shared with Diary)
 let unsubs = [];
 
-const KIND_LABELS = { '': '日々の写真', garden: '🌹 園芸', record: '📚 記録' };
-const TAG_PLACEHOLDERS = { garden: '植物の名前（例：バラ）', record: 'テーマ（例：料理・手芸）' };
+// The day page has three sections. Photo `kind` values predate the sections:
+// '' is 日々のこと and 'record' (formerly 記録) is 学び.
+const SECTIONS = [
+  { key: 'garden', kind: 'garden', field: 'garden', icon: '🌹', label: '園芸', photosFirst: true,
+    placeholder: '庭や植物のようす、作業したことなど' },
+  { key: 'daily', kind: '', field: 'comment', icon: '📝', label: '日々のこと', photosFirst: false,
+    placeholder: '今日のできごとや、思ったことを自由に' },
+  { key: 'learn', kind: 'record', field: 'learn', icon: '📚', label: '学び', photosFirst: false,
+    placeholder: '今日学んだこと、気づいたこと' }
+];
+function sectionByKey(key) { return SECTIONS.find(s => s.key === key); }
+const KIND_LABELS = { garden: '🌹 園芸', '': '📝 日々のこと', record: '📚 学び' };
+const TAG_PLACEHOLDERS = { garden: '植物の名前（例：バラ）', record: 'テーマ（任意）' };
 
 function photosOfDate(dateStr) {
   return allPhotos.filter(p => p.date === dateStr)
@@ -868,8 +871,7 @@ function refreshAllViews() {
   renderScheduleMonth();
   showScheduleYearReview();
   if (currentDay) renderDay({ keepComment: true });
-  renderCollection('garden');
-  renderCollection('record');
+  renderCollections();
   updateTagLists();
 }
 
@@ -972,12 +974,13 @@ function renderScheduleMonth() {
     }).join('') + (dayEvents.length > maxShow ? `<div class="cal-event-chip">+${dayEvents.length - maxShow}件</div>` : '');
 
     const dayPhotos = photosOfDate(dateStr);
+    const note = dayNotes[dateStr] || {};
     const marks = [];
-    for (const [kind, icon] of [['', '📷'], ['garden', '🌹'], ['record', '📚']]) {
-      const n = dayPhotos.filter(p => (p.kind || '') === kind).length;
-      if (n) marks.push(n > 1 ? `${icon}${n}` : icon);
+    for (const s of SECTIONS) {
+      const n = dayPhotos.filter(p => (p.kind || '') === s.kind).length;
+      if (n > 1) marks.push(`${s.icon}${n}`);
+      else if (n || note[s.field]) marks.push(s.icon);
     }
-    if (dayNotes[dateStr] && dayNotes[dateStr].comment) marks.push('✏️');
     const marksHtml = marks.length ? `<div class="cal-marks">${marks.join(' ')}</div>` : '';
 
     const classes = ['cal-day'];
@@ -1053,37 +1056,96 @@ document.getElementById('scheduleYearShow').addEventListener('click', showSchedu
 
 /* ---------- Day screen: photos, comment and schedule for one date ---------- */
 let currentDay = null;
-let pendingPhotos = [];        // photos picked but not saved yet
-let commentDirty = false;
+// Photos picked but not saved yet, per section.
+let pendingPhotos = { garden: [], daily: [], learn: [] };
+let commentDirty = { garden: false, daily: false, learn: false };
+let photoTarget = 'daily';     // section that the file inputs / camera add to
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + n);
   return toDateStr(d);
 }
+function hasPending() { return SECTIONS.some(s => pendingPhotos[s.key].length); }
+
+function buildDaySections() {
+  document.getElementById('daySections').innerHTML = SECTIONS.map(s => {
+    const comment = `
+      <div class="sec-comment">
+        <textarea class="sec-comment-input" data-sec="${s.key}" placeholder="${s.placeholder}"></textarea>
+        <div class="section-actions">
+          <span class="saved-note" data-saved="${s.key}"></span>
+          <button class="btn-primary" data-save-comment="${s.key}">コメントを保存</button>
+        </div>
+      </div>`;
+    const photos = `
+      <div class="sec-photos">
+        <div class="photo-edit-list" data-photo-list="${s.key}"></div>
+        <div class="pending-box" data-pending-box="${s.key}" style="display:none;">
+          <div class="pending-label">新しく追加する写真（説明を入れて「写真を保存する」）</div>
+          <div class="photo-edit-list" data-pending-list="${s.key}"></div>
+          <div class="section-actions">
+            <button class="btn-secondary" data-pending-cancel="${s.key}">やめる</button>
+            <button class="btn-primary" data-pending-save="${s.key}">写真を保存する</button>
+          </div>
+        </div>
+        <div class="section-actions">
+          <button class="btn-secondary" data-take-photo="${s.key}">📷 その場で撮影</button>
+          <button class="btn-secondary" data-add-photo="${s.key}">＋ 写真を追加</button>
+        </div>
+      </div>`;
+    return `
+      <div class="day-section sec-${s.key}">
+        <h2>${s.icon} ${s.label}</h2>
+        ${s.photosFirst ? photos + comment : comment + photos}
+      </div>`;
+  }).join('');
+
+  for (const s of SECTIONS) {
+    const root = document.querySelector(`.sec-${s.key}`);
+    root.querySelector('.sec-comment-input').addEventListener('input', () => {
+      commentDirty[s.key] = true;
+      root.querySelector(`[data-saved="${s.key}"]`).textContent = '';
+    });
+    root.querySelector(`[data-save-comment="${s.key}"]`).addEventListener('click', () => saveComment(s));
+    root.querySelector(`[data-add-photo="${s.key}"]`).addEventListener('click', () => {
+      photoTarget = s.key;
+      document.getElementById('photoInput').click();
+    });
+    root.querySelector(`[data-take-photo="${s.key}"]`).addEventListener('click', () => {
+      photoTarget = s.key;
+      openCamera();
+    });
+    root.querySelector(`[data-pending-cancel="${s.key}"]`).addEventListener('click', () => {
+      pendingPhotos[s.key] = [];
+      renderPending(s.key);
+    });
+    root.querySelector(`[data-pending-save="${s.key}"]`).addEventListener('click', (e) => savePending(s.key, e.currentTarget));
+  }
+}
+buildDaySections();
 
 function openDay(dateStr) {
   switchTab('day');
   currentDay = dateStr;
-  pendingPhotos = [];
-  document.getElementById('pendingList').innerHTML = '';
-  document.getElementById('dayPhotoList').innerHTML = '';
-  commentDirty = false;
-  document.getElementById('commentSavedNote').textContent = '';
+  pendingPhotos = { garden: [], daily: [], learn: [] };
+  commentDirty = { garden: false, daily: false, learn: false };
+  document.querySelectorAll('[data-pending-list], [data-photo-list]').forEach(el => { el.innerHTML = ''; });
+  document.querySelectorAll('[data-saved]').forEach(el => { el.textContent = ''; });
   closeScheduleForm();
   const [y, m] = dateStr.split('-').map(v => parseInt(v, 10));
   if (y !== calYear || m !== calMonth) setCalMonth(y, m);
   renderDay();
 }
 document.getElementById('dayBackBtn').addEventListener('click', () => {
-  if (pendingPhotos.length && !confirm('保存していない写真があります。カレンダーに戻りますか？')) return;
+  if (hasPending() && !confirm('保存していない写真があります。カレンダーに戻りますか？')) return;
   showMonthPanel();
   switchTab('calendar');
 });
 document.getElementById('dayPrevBtn').addEventListener('click', () => moveDay(-1));
 document.getElementById('dayNextBtn').addEventListener('click', () => moveDay(1));
 function moveDay(n) {
-  if (pendingPhotos.length && !confirm('保存していない写真があります。別の日に移りますか？')) return;
+  if (hasPending() && !confirm('保存していない写真があります。別の日に移りますか？')) return;
   openDay(addDays(currentDay, n));
 }
 
@@ -1132,8 +1194,8 @@ function wireKindSelect(row) {
   });
 }
 function validateFields(f) {
-  if (f.kind && !f.tag) {
-    alert(f.kind === 'garden' ? '植物の名前を入れてください（例：バラ）。' : '記録のテーマを入れてください。');
+  if (f.kind === 'garden' && !f.tag) {
+    alert('植物の名前を入れてください（例：バラ）。');
     return false;
   }
   return true;
@@ -1144,61 +1206,75 @@ function renderDay(opts = {}) {
   const holiday = holidayNameOf(currentDay);
   document.getElementById('dayTitle').innerHTML =
     escapeHtml(formatDateJp(currentDay)) + (holiday ? `<span class="holiday-name">${escapeHtml(holiday)}</span>` : '');
+  const note = dayNotes[currentDay] || {};
 
-  // Photos already saved. Keep what the user is typing when cloud data refreshes.
-  const list = document.getElementById('dayPhotoList');
-  const dirty = {};
-  list.querySelectorAll('.photo-edit.dirty').forEach(row => { dirty[row.dataset.key] = readFields(row); });
-  const photos = photosOfDate(currentDay);
-  list.innerHTML = photos.length
-    ? photos.map(p => photoEditHtml(dirty[p.id] ? { ...p, ...dirty[p.id] } : p, p.id, false)).join('')
-    : '<div class="empty-state" style="padding:20px;">まだ写真はありません</div>';
-  list.querySelectorAll('.photo-edit').forEach(row => {
-    const id = row.dataset.key;
-    if (dirty[id]) row.classList.add('dirty');
-    row.addEventListener('input', () => row.classList.add('dirty'));
-    row.addEventListener('change', () => row.classList.add('dirty'));
-    wireKindSelect(row);
-    row.querySelector('img').addEventListener('click', () => {
-      openLightbox(photos, photos.findIndex(p => p.id === id));
+  for (const s of SECTIONS) {
+    // Photos already saved. Keep what the user is typing when cloud data refreshes.
+    const list = document.querySelector(`[data-photo-list="${s.key}"]`);
+    const dirty = {};
+    list.querySelectorAll('.photo-edit.dirty').forEach(row => { dirty[row.dataset.key] = readFields(row); });
+    const photos = photosOfDate(currentDay).filter(p => (p.kind || '') === s.kind);
+    list.innerHTML = photos.map(p => photoEditHtml(dirty[p.id] ? { ...p, ...dirty[p.id] } : p, p.id, false)).join('');
+    list.querySelectorAll('.photo-edit').forEach(row => {
+      const id = row.dataset.key;
+      if (dirty[id]) row.classList.add('dirty');
+      row.addEventListener('input', () => row.classList.add('dirty'));
+      row.addEventListener('change', () => row.classList.add('dirty'));
+      wireKindSelect(row);
+      row.querySelector('img').addEventListener('click', () => {
+        openLightbox(photos, photos.findIndex(p => p.id === id));
+      });
+      row.querySelector('.f-save').addEventListener('click', async () => {
+        const f = readFields(row);
+        if (!validateFields(f)) return;
+        const p = allPhotos.find(x => x.id === id);
+        row.classList.remove('dirty');
+        await saveDoc('pd_photos', id, { ...stripId(p), ...f });
+      });
+      row.querySelector('.f-delete').addEventListener('click', async () => {
+        if (!confirm('この写真を削除しますか？')) return;
+        await removeDoc('pd_photos', id);
+      });
     });
-    row.querySelector('.f-save').addEventListener('click', async () => {
-      const f = readFields(row);
-      if (!validateFields(f)) return;
-      const p = allPhotos.find(x => x.id === id);
-      row.classList.remove('dirty');
-      await saveDoc('pd_photos', id, { ...stripId(p), ...f });
-    });
-    row.querySelector('.f-delete').addEventListener('click', async () => {
-      if (!confirm('この写真を削除しますか？')) return;
-      await removeDoc('pd_photos', id);
-    });
-  });
 
-  if (opts.keepComment) syncPendingFromDom();
-  renderPending();
+    if (opts.keepComment) syncPendingFromDom(s.key);
+    renderPending(s.key);
 
-  // Comment
-  const ta = document.getElementById('dayComment');
-  if (!(opts.keepComment && commentDirty)) {
-    ta.value = (dayNotes[currentDay] && dayNotes[currentDay].comment) || '';
-    commentDirty = false;
+    const ta = document.querySelector(`.sec-comment-input[data-sec="${s.key}"]`);
+    if (!(opts.keepComment && commentDirty[s.key])) {
+      ta.value = note[s.field] || '';
+      commentDirty[s.key] = false;
+    }
   }
 
   renderDaySchedule();
 }
 function stripId(p) { const { id, ...rest } = p; return rest; }
 
+async function saveComment(s) {
+  const value = document.querySelector(`.sec-comment-input[data-sec="${s.key}"]`).value.trim();
+  const merged = { ...(dayNotes[currentDay] || {}), date: currentDay, [s.field]: value, updatedAt: Date.now() };
+  const empty = SECTIONS.every(x => !merged[x.field]);
+  const ok = empty
+    ? (dayNotes[currentDay] ? await removeDoc('pd_days', currentDay) : true)
+    : await saveDoc('pd_days', currentDay, merged);
+  if (ok) {
+    commentDirty[s.key] = false;
+    document.querySelector(`[data-saved="${s.key}"]`).textContent = '保存しました';
+  }
+}
+
 /* New photos */
-document.getElementById('addPhotoBtn').addEventListener('click', () => document.getElementById('photoInput').click());
-async function addFiles(files) {
+async function addFiles(files, key = photoTarget) {
+  const kind = sectionByKey(key).kind;
+  syncPendingFromDom(key);
   for (const file of files) {
     let dataUrl = await resizeImage(file, 1280, 0.75);
     // Keep each photo comfortably under Firestore's 1MB document limit.
     if (dataUrl.length > 800000) dataUrl = await resizeImage(file, 1024, 0.65);
-    pendingPhotos.push({ dataUrl, caption: '', kind: '', tag: '' });
+    pendingPhotos[key].push({ dataUrl, caption: '', kind, tag: '' });
   }
-  renderPending();
+  renderPending(key);
 }
 function addPickedPhotos(e) {
   const files = Array.from(e.target.files || []);
@@ -1214,7 +1290,7 @@ document.getElementById('cameraInput').addEventListener('change', addPickedPhoto
 let cameraStream = null;
 let cameraShots = 0;
 const isPhone = window.matchMedia('(pointer: coarse)').matches;
-document.getElementById('takePhotoBtn').addEventListener('click', async () => {
+async function openCamera() {
   if (isPhone || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
     document.getElementById('cameraInput').click();
     return;
@@ -1229,7 +1305,7 @@ document.getElementById('takePhotoBtn').addEventListener('click', async () => {
   document.getElementById('cameraNote').textContent = '';
   document.getElementById('cameraVideo').srcObject = cameraStream;
   document.getElementById('cameraModal').classList.add('open');
-});
+}
 function closeCamera() {
   if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
   cameraStream = null;
@@ -1249,67 +1325,46 @@ document.getElementById('cameraShutterBtn').addEventListener('click', () => {
     document.getElementById('cameraNote').textContent = `${cameraShots}枚撮りました（「閉じる」で説明の入力へ）`;
   }, 'image/jpeg', 0.92);
 });
-function syncPendingFromDom() {
-  document.querySelectorAll('#pendingList .photo-edit').forEach(row => {
+function syncPendingFromDom(key) {
+  document.querySelectorAll(`[data-pending-list="${key}"] .photo-edit`).forEach(row => {
     const idx = parseInt(row.dataset.key, 10);
-    if (pendingPhotos[idx]) Object.assign(pendingPhotos[idx], readFields(row));
+    if (pendingPhotos[key][idx]) Object.assign(pendingPhotos[key][idx], readFields(row));
   });
 }
-function renderPending() {
-  const box = document.getElementById('pendingBox');
-  const list = document.getElementById('pendingList');
-  box.style.display = pendingPhotos.length ? '' : 'none';
-  list.innerHTML = pendingPhotos.map((p, i) => photoEditHtml(p, i, true)).join('');
+function renderPending(key) {
+  const box = document.querySelector(`[data-pending-box="${key}"]`);
+  const list = document.querySelector(`[data-pending-list="${key}"]`);
+  box.style.display = pendingPhotos[key].length ? '' : 'none';
+  list.innerHTML = pendingPhotos[key].map((p, i) => photoEditHtml(p, i, true)).join('');
   list.querySelectorAll('.photo-edit').forEach(row => {
     wireKindSelect(row);
-    row.querySelector('img').addEventListener('click', () => openLightbox(pendingPhotos, parseInt(row.dataset.key, 10)));
+    row.querySelector('img').addEventListener('click', () => openLightbox(pendingPhotos[key], parseInt(row.dataset.key, 10)));
     row.querySelector('.f-remove').addEventListener('click', () => {
-      syncPendingFromDom();
-      pendingPhotos.splice(parseInt(row.dataset.key, 10), 1);
-      renderPending();
+      syncPendingFromDom(key);
+      pendingPhotos[key].splice(parseInt(row.dataset.key, 10), 1);
+      renderPending(key);
     });
   });
 }
-document.getElementById('pendingCancelBtn').addEventListener('click', () => {
-  pendingPhotos = [];
-  renderPending();
-});
-document.getElementById('pendingSaveBtn').addEventListener('click', async (e) => {
-  syncPendingFromDom();
-  for (const p of pendingPhotos) if (!validateFields(p)) return;
-  const btn = e.currentTarget;
+async function savePending(key, btn) {
+  syncPendingFromDom(key);
+  for (const p of pendingPhotos[key]) if (!validateFields(p)) return;
   btn.disabled = true; btn.textContent = '保存中…';
   const existing = photosOfDate(currentDay);
   let order = existing.reduce((m, p) => Math.max(m, p.order || 0), 0);
-  const toSave = pendingPhotos;
-  pendingPhotos = [];
+  const toSave = pendingPhotos[key];
+  pendingPhotos[key] = [];
   for (const p of toSave) {
     order++;
     const ok = await saveDoc('pd_photos', uid(), {
       date: currentDay, dataUrl: p.dataUrl, caption: p.caption, kind: p.kind, tag: p.tag,
       order, createdAt: Date.now()
     });
-    if (!ok) { pendingPhotos.push(p); }
+    if (!ok) { pendingPhotos[key].push(p); }
   }
   btn.disabled = false; btn.textContent = '写真を保存する';
-  renderPending();
-});
-
-/* Comment */
-document.getElementById('dayComment').addEventListener('input', () => {
-  commentDirty = true;
-  document.getElementById('commentSavedNote').textContent = '';
-});
-document.getElementById('saveCommentBtn').addEventListener('click', async () => {
-  const comment = document.getElementById('dayComment').value.trim();
-  const ok = comment
-    ? await saveDoc('pd_days', currentDay, { date: currentDay, comment, updatedAt: Date.now() })
-    : (dayNotes[currentDay] ? await removeDoc('pd_days', currentDay) : true);
-  if (ok) {
-    commentDirty = false;
-    document.getElementById('commentSavedNote').textContent = '保存しました';
-  }
-});
+  renderPending(key);
+}
 
 /* Schedule for the day (same fields as Diary's 予定 page) */
 function closeScheduleForm() {
@@ -1379,20 +1434,17 @@ document.getElementById('scheduleSaveBtn').addEventListener('click', async () =>
   if (ok) closeScheduleForm();
 });
 
-/* ---------- 園芸 / 記録: photos grouped by plant or theme ---------- */
+/* ---------- 園芸 / 日々のこと / 学び tabs ---------- */
+// 園芸 can be seen per plant (growth record) or per day; the others per day.
 const colState = {
-  garden: { tag: null, view: 'timeline', newestFirst: false },
-  record: { tag: null, view: 'timeline', newestFirst: false }
+  garden: { mode: 'days', tag: null, view: 'timeline', newestFirst: false, daysNewestFirst: true },
+  daily: { newestFirst: true },
+  learn: { newestFirst: true }
 };
-const COL_TEXT = {
-  garden: {
-    intro: '日付の画面で写真を追加するときに「🌹 園芸」を選んで植物の名前を入れると、ここに植物ごとの成長記録としてまとまります。',
-    empty: 'まだ園芸の写真はありません'
-  },
-  record: {
-    intro: '日付の画面で写真を追加するときに「📚 記録」を選んでテーマ（料理・手芸・お出かけなど）を入れると、ここにテーマごとにまとまります。',
-    empty: 'まだ記録の写真はありません'
-  }
+const SECTION_INTRO = {
+  garden: '日付の画面の「🌹 園芸」に書いたコメントと写真が、ここにまとまります。写真に植物の名前を付けると「植物ごと」で成長の記録として見られます。',
+  daily: '日付の画面の「📝 日々のこと」に書いたコメントと写真が、日ごとにまとまります。',
+  learn: '日付の画面の「📚 学び」に書いたコメントと写真が、日ごとにまとまります。'
 };
 function shortDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(v => parseInt(v, 10));
@@ -1404,12 +1456,84 @@ function daysBetween(a, b) {
 function withDateCaption(photos) {
   return photos.map(p => ({ ...p, caption: `${shortDate(p.date)}　${p.caption || ''}` }));
 }
+function bodyOf(key) { return document.getElementById(`${key}Body`); }
 
-function renderCollection(kind) {
-  const body = document.getElementById(kind === 'garden' ? 'gardenBody' : 'recordBody');
-  const st = colState[kind];
-  const tags = tagsOf(kind);
+// Every day that has a comment or photo in this section, as a timeline.
+function dayTimelineHtml(s, newestFirst, lightboxList) {
+  const dates = new Set();
+  for (const [date, n] of Object.entries(dayNotes)) if (n[s.field]) dates.add(date);
+  for (const p of allPhotos) if ((p.kind || '') === s.kind) dates.add(p.date);
+  const sorted = Array.from(dates).sort();
+  if (newestFirst) sorted.reverse();
+  if (!sorted.length) return `<div class="empty-state">まだ${s.label}の記録はありません</div>`;
+  return `<div class="timeline">${sorted.map(date => {
+    const comment = (dayNotes[date] || {})[s.field];
+    const commentHtml = comment ? `<div class="timeline-comment">${escapeHtml(comment)}</div>` : '';
+    const photosHtml = photosOfDate(date).filter(p => (p.kind || '') === s.kind).map(p => {
+      lightboxList.push(p);
+      const tag = p.tag ? `<span class="tag-badge${s.kind === 'record' ? ' record' : ''}">${escapeHtml(p.tag)}</span> ` : '';
+      return `<div class="timeline-photo"><img data-idx="${lightboxList.length - 1}" src="${p.dataUrl}" alt=""><div class="cap">${tag}${escapeHtml(p.caption || '')}</div></div>`;
+    }).join('');
+    return `
+      <div class="timeline-day">
+        <div class="timeline-date" data-date="${date}">${formatDateJp(date)}</div>
+        ${s.photosFirst ? photosHtml + commentHtml : commentHtml + photosHtml}
+      </div>`;
+  }).join('')}</div>`;
+}
+function wireTimeline(body, lightboxList) {
+  body.querySelectorAll('img[data-idx]').forEach(img => {
+    img.addEventListener('click', () => openLightbox(lightboxList, parseInt(img.dataset.idx, 10)));
+  });
+  body.querySelectorAll('.timeline-date').forEach(el => el.addEventListener('click', () => openDay(el.dataset.date)));
+}
+
+function renderDayCollection(key) {
+  const s = sectionByKey(key);
+  const st = colState[key];
+  const body = bodyOf(key);
+  const lightboxList = [];
+  const timeline = dayTimelineHtml(s, st.newestFirst, lightboxList);
+  body.innerHTML = `
+    <p class="collection-intro">${SECTION_INTRO[key]}</p>
+    <div class="view-toggle">
+      <button data-act="order">${st.newestFirst ? '新しい順 ⇅' : '古い順 ⇅'}</button>
+    </div>
+    ${timeline}
+  `;
+  body.querySelector('[data-act="order"]').addEventListener('click', () => { st.newestFirst = !st.newestFirst; renderDayCollection(key); });
+  wireTimeline(body, withDateCaption(lightboxList));
+}
+
+function renderGarden() {
+  const s = sectionByKey('garden');
+  const st = colState.garden;
+  const body = bodyOf('garden');
+  const tags = tagsOf('garden');
   if (st.tag && !tags.has(st.tag)) st.tag = null;
+  const modeToggle = `
+    <div class="view-toggle">
+      <button data-mode="days" class="${st.mode === 'days' ? 'active' : ''}">日ごと</button>
+      <button data-mode="plants" class="${st.mode === 'plants' ? 'active' : ''}">植物ごと</button>
+    </div>`;
+  const wireMode = () => body.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    st.mode = b.dataset.mode; st.tag = null; renderGarden();
+  }));
+
+  if (st.mode === 'days') {
+    const lightboxList = [];
+    const timeline = dayTimelineHtml(s, st.daysNewestFirst, lightboxList);
+    body.innerHTML = `
+      <p class="collection-intro">${SECTION_INTRO.garden}</p>
+      ${modeToggle}
+      <div class="view-toggle"><button data-act="order">${st.daysNewestFirst ? '新しい順 ⇅' : '古い順 ⇅'}</button></div>
+      ${timeline}
+    `;
+    wireMode();
+    body.querySelector('[data-act="order"]').addEventListener('click', () => { st.daysNewestFirst = !st.daysNewestFirst; renderGarden(); });
+    wireTimeline(body, withDateCaption(lightboxList));
+    return;
+  }
 
   if (!st.tag) {
     const entries = Array.from(tags.entries()).map(([tag, photos]) => {
@@ -1417,7 +1541,8 @@ function renderCollection(kind) {
       return { tag, photos, first: photos[0].date, last: photos[photos.length - 1].date };
     }).sort((a, b) => b.last.localeCompare(a.last));
     body.innerHTML = `
-      <p class="collection-intro">${COL_TEXT[kind].intro}</p>
+      <p class="collection-intro">${SECTION_INTRO.garden}</p>
+      ${modeToggle}
       ${entries.length ? `<div class="tag-grid">${entries.map(e => `
         <button class="tag-card" data-tag="${escapeHtml(e.tag)}">
           <img src="${e.photos[e.photos.length - 1].dataUrl}" alt="">
@@ -1426,19 +1551,20 @@ function renderCollection(kind) {
             <div class="tag-meta">${e.photos.length}枚・${shortDate(e.first)}〜${shortDate(e.last)}</div>
           </div>
         </button>`).join('')}</div>`
-        : `<div class="empty-state">${COL_TEXT[kind].empty}</div>`}
+        : '<div class="empty-state">まだ植物の名前が付いた写真はありません</div>'}
     `;
+    wireMode();
     body.querySelectorAll('.tag-card').forEach(card => {
       card.addEventListener('click', () => {
         st.tag = card.dataset.tag;
-        renderCollection(kind);
+        renderGarden();
         window.scrollTo(0, 0);
       });
     });
     return;
   }
 
-  const photos = photosOfTag(kind, st.tag);
+  const photos = photosOfTag('garden', st.tag);
   const first = photos[0].date, last = photos[photos.length - 1].date;
   const ordered = st.newestFirst ? photos.slice().reverse() : photos;
   const lightboxList = withDateCaption(ordered);
@@ -1464,7 +1590,7 @@ function renderCollection(kind) {
   body.innerHTML = `
     <div class="collection-head">
       <button class="btn-secondary" data-act="back">‹ 一覧へ</button>
-      <h2>${kind === 'garden' ? '🌹' : '📚'} ${escapeHtml(st.tag)}</h2>
+      <h2>🌹 ${escapeHtml(st.tag)}</h2>
       <button class="btn-secondary" data-act="rename">名前を変える</button>
     </div>
     <div class="collection-sub">${photos.length}枚・${formatDateJp(first)}から${daysBetween(first, last) + 1}日間の記録</div>
@@ -1475,20 +1601,22 @@ function renderCollection(kind) {
     </div>
     ${content}
   `;
-  body.querySelector('[data-act="back"]').addEventListener('click', () => { st.tag = null; renderCollection(kind); });
-  body.querySelector('[data-act="order"]').addEventListener('click', () => { st.newestFirst = !st.newestFirst; renderCollection(kind); });
-  body.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { st.view = b.dataset.view; renderCollection(kind); }));
+  body.querySelector('[data-act="back"]').addEventListener('click', () => { st.tag = null; renderGarden(); });
+  body.querySelector('[data-act="order"]').addEventListener('click', () => { st.newestFirst = !st.newestFirst; renderGarden(); });
+  body.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { st.view = b.dataset.view; renderGarden(); }));
   body.querySelector('[data-act="rename"]').addEventListener('click', async () => {
     const name = (prompt('新しい名前', st.tag) || '').trim();
     if (!name || name === st.tag) return;
-    const targets = photosOfTag(kind, st.tag);
+    const targets = photosOfTag('garden', st.tag);
     st.tag = name;
     for (const p of targets) await saveDoc('pd_photos', p.id, { ...stripId(p), tag: name });
   });
-  body.querySelectorAll('img[data-idx]').forEach(img => {
-    img.addEventListener('click', () => openLightbox(lightboxList, parseInt(img.dataset.idx, 10)));
-  });
-  body.querySelectorAll('.timeline-date').forEach(el => el.addEventListener('click', () => openDay(el.dataset.date)));
+  wireTimeline(body, lightboxList);
+}
+function renderCollections() {
+  renderGarden();
+  renderDayCollection('daily');
+  renderDayCollection('learn');
 }
 
 function updateTagLists() {
@@ -1539,8 +1667,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 });
 
 renderScheduleMonth();
-renderCollection('garden');
-renderCollection('record');
+renderCollections();
 </script>
 </body>
 </html>
