@@ -501,10 +501,6 @@
       <button class="btn-secondary" id="dayNextBtn">次の日</button>
     </div>
 
-    <div id="daySections"></div>
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-    <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
-
     <div class="day-section schedule-section">
       <h2>🗓️ この日の予定</h2>
       <div id="scheduleDayPanel"></div>
@@ -529,6 +525,11 @@
         <button class="btn-secondary" id="addScheduleBtn">＋ 予定を追加</button>
       </div>
     </div>
+
+    <div id="daySections"></div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+    <input type="file" id="photoInput" accept="image/*" multiple style="display:none;">
+
   </section>
 
   <section id="tab-garden" class="tab-panel">
@@ -1153,6 +1154,20 @@ function buildDaySections() {
 }
 buildDaySections();
 
+// Day page order: 日々のこと, 園芸, 学び, but sections that already have
+// something for this day come first. Decided when the day is opened, so the
+// page does not jump around while typing.
+const DAY_ORDER = ['daily', 'garden', 'learn'];
+function sectionHasContent(s, dateStr) {
+  return !!(dayNotes[dateStr] || {})[s.field] ||
+    photosOfDate(dateStr).some(p => (p.kind || '') === s.kind);
+}
+function orderDaySections(dateStr) {
+  const wrap = document.getElementById('daySections');
+  const keys = DAY_ORDER.slice().sort((a, b) =>
+    Number(sectionHasContent(sectionByKey(b), dateStr)) - Number(sectionHasContent(sectionByKey(a), dateStr)));
+  keys.forEach(k => wrap.appendChild(wrap.querySelector(`.sec-${k}`)));
+}
 function openDay(dateStr) {
   switchTab('day');
   currentDay = dateStr;
@@ -1164,6 +1179,7 @@ function openDay(dateStr) {
   closeScheduleForm();
   const [y, m] = dateStr.split('-').map(v => parseInt(v, 10));
   if (y !== calYear || m !== calMonth) setCalMonth(y, m);
+  orderDaySections(dateStr);
   renderDay();
 }
 function backToCalendar() {
