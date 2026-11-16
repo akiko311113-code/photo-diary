@@ -316,7 +316,7 @@
   .day-section.sec-garden h2 { color: var(--accent-garden-dark); }
   .day-section.sec-learn { border-color: #e2d9fd; }
   .day-section.sec-learn h2 { color: #7c5cd6; }
-  .sec-comment + .sec-photos, .sec-photos + .sec-comment { margin-top: 14px; }
+  .sec-photos [data-photo-list]:not(:empty) { margin: 10px 0; }
   .sec-photos .photo-edit-list:not(:empty) { margin-bottom: 4px; }
   .timeline-comment {
     font-size: 0.92rem; line-height: 1.7; white-space: pre-wrap; background: #fff;
@@ -1187,16 +1187,19 @@ function buildDaySections() {
             <button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>
           </div>
         </div>
-        <div class="section-actions">
-          <button class="btn-secondary" data-merge-start="${s.key}" style="display:none;">🔗 写真をまとめる</button>
-          <button class="btn-secondary" data-take-photo="${s.key}">📷 その場で撮影</button>
-          <button class="btn-secondary" data-add-photo="${s.key}">＋ 写真を追加</button>
-        </div>
+      </div>`;
+    // The add-photo buttons sit at the bottom of every section, so all three
+    // sections have the same button layout (園芸 still shows its photos first).
+    const addButtons = `
+      <div class="section-actions sec-add-photos">
+        <button class="btn-secondary" data-merge-start="${s.key}" style="display:none;">🔗 写真をまとめる</button>
+        <button class="btn-secondary" data-take-photo="${s.key}">📷 その場で撮影</button>
+        <button class="btn-secondary" data-add-photo="${s.key}">＋ 写真を追加</button>
       </div>`;
     return `
       <div class="day-section sec-${s.key}">
         <h2>${s.icon} ${s.label}</h2>
-        ${s.photosFirst ? photos + comment : comment + photos}
+        ${s.photosFirst ? photos + comment : comment + photos}${addButtons}
       </div>`;
   }).join('');
 
