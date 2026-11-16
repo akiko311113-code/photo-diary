@@ -440,6 +440,63 @@
   .photo-grid figure { margin: 0; }
   .photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: zoom-in; display: block; }
   .photo-grid figcaption { font-size: 0.7rem; color: var(--sub); text-align: center; margin-top: 3px; }
+
+  /* ---------- Compact layout: smaller buttons and spacing (photos stay large) ---------- */
+  header { padding: 14px 16px 2px; }
+  header h1 { font-size: 1.35rem; }
+  header p { margin-top: 2px; font-size: 0.78rem; }
+  .user-bar { margin-top: 4px; }
+  .tabs { padding: 10px 12px 2px; gap: 6px; }
+  .nav-btn { padding: 6px 12px; font-size: 0.82rem; }
+  .container { padding-top: 4px; }
+  button { padding: 7px 13px; font-size: 0.82rem; }
+  .btn-primary { box-shadow: 0 2px 0 var(--accent-dark); }
+  #tab-calendar .btn-primary { box-shadow: 0 2px 0 var(--accent-schedule-dark); }
+  .review-subnav { margin: 10px 0; gap: 6px; }
+  .cal-controls { gap: 6px; margin-bottom: 10px; }
+  .cal-controls select, .review-controls select { padding: 6px 8px; font-size: 0.82rem; }
+  .cal-controls button { padding: 6px 9px; }
+  .cal-controls select { padding: 6px 4px; }
+  .review-subnav button { padding: 6px 14px; }
+  .category-legend { margin-bottom: 10px; }
+  .day-head { margin: 10px 0; gap: 6px; }
+  .day-head .day-title { font-size: 1.05rem; }
+  .day-head button { padding: 5px 10px; font-size: 0.78rem; }
+  .day-section { padding: 12px; margin-bottom: 12px; border-radius: 14px; }
+  .day-section h2 { font-size: 0.9rem; margin-bottom: 8px; }
+  .day-section textarea, .day-section input[type="text"], .day-section select { padding: 7px 10px; font-size: 0.9rem; border-radius: 10px; }
+  .day-section textarea { min-height: 70px; }
+  .section-actions { margin-top: 8px; gap: 6px; }
+  .section-actions button { padding: 5px 11px; font-size: 0.76rem; }
+  .photo-edit .fields { gap: 5px; }
+  .photo-edit .fields textarea { min-height: 56px; }
+  .photo-edit .row-actions { gap: 5px; }
+  .photo-edit .row-actions button { padding: 4px 9px; font-size: 0.72rem; }
+  .pending-box, .merge-bar { padding: 10px; margin-top: 10px; }
+  .group-toggle { padding: 7px 10px; font-size: 0.82rem; margin-bottom: 8px; }
+  .view-toggle button, .collection-head button { padding: 5px 11px; font-size: 0.76rem; }
+  .form-actions button { padding: 6px 12px; }
+  /* The ✕ on photos that share one comment: small and quiet */
+  .gt-x {
+    top: 4px; right: 4px; width: 18px; height: 18px; line-height: 18px;
+    font-size: 0.58rem; background: rgba(0,0,0,0.32);
+  }
+  /* Schedule on the day page: text only, so keep it tight */
+  .day-section.schedule-section { padding: 10px 12px; }
+  .sched-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sched-head button { padding: 3px 10px; font-size: 0.72rem; }
+  .schedule-section .sched-head { margin-bottom: 6px; }
+  .schedule-section .collection-sub { margin: 0; font-size: 0.78rem; }
+  .schedule-section .entry-card { padding: 6px 10px; margin-bottom: 6px; border-radius: 10px; border-width: 1px; }
+  .schedule-section .entry-card:last-child { margin-bottom: 0; }
+  .sched-row { display: flex; align-items: center; gap: 8px; }
+  .sched-main { flex: 1; min-width: 0; }
+  .schedule-section .entry-title { font-size: 0.88rem; margin: 0; }
+  .schedule-section .entry-date { font-size: 0.7rem; margin: 1px 0 0; }
+  .schedule-section .entry-body { font-size: 0.8rem; line-height: 1.5; margin-top: 2px; }
+  .schedule-section .entry-actions { margin: 0; gap: 4px; flex-shrink: 0; }
+  .schedule-section .entry-actions button { padding: 3px 8px; font-size: 0.7rem; }
+  .schedule-section .entry-form { margin-top: 6px; padding: 10px; }
 </style>
 </head>
 <body>
@@ -509,7 +566,7 @@
     </div>
 
     <div class="day-section schedule-section">
-      <h2>🗓️ この日の予定</h2>
+      <h2 class="sched-head"><span>🗓️ この日の予定</span><button class="btn-secondary" id="addScheduleBtn">＋ 予定を追加</button></h2>
       <div id="scheduleDayPanel"></div>
       <div class="entry-form" id="scheduleEntryForm">
         <input type="hidden" id="scheduleEditingId">
@@ -527,9 +584,6 @@
           <button class="btn-secondary" id="scheduleCancelBtn">キャンセル</button>
           <button class="btn-primary" id="scheduleSaveBtn">保存する</button>
         </div>
-      </div>
-      <div class="section-actions">
-        <button class="btn-secondary" id="addScheduleBtn">＋ 予定を追加</button>
       </div>
     </div>
 
@@ -1552,12 +1606,16 @@ function renderDaySchedule() {
     const cat = scheduleCategoryOf(ev);
     const catBadge = cat ? `<span class="schedule-category-badge" style="background:${cat.bg};color:${cat.text}">${escapeHtml(cat.name)}</span>` : '';
     card.innerHTML = `
-      <div class="entry-date">🗓️ ${rangeLabel}${catBadge}</div>
-      <div class="entry-title">${escapeHtml(eventLabel(ev))}</div>
-      ${ev.note ? `<div class="entry-body">${escapeHtml(ev.note)}</div>` : ''}
-      <div class="entry-actions">
-        <button class="btn-secondary sched-edit-btn">編集</button>
-        <button class="btn-danger sched-delete-btn">削除</button>
+      <div class="sched-row">
+        <div class="sched-main">
+          <div class="entry-title">${escapeHtml(eventLabel(ev))}${catBadge}</div>
+          ${eventEndDate(ev) !== ev.date ? `<div class="entry-date">${rangeLabel}</div>` : ''}
+          ${ev.note ? `<div class="entry-body">${escapeHtml(ev.note)}</div>` : ''}
+        </div>
+        <div class="entry-actions">
+          <button class="btn-secondary sched-edit-btn">編集</button>
+          <button class="btn-danger sched-delete-btn">削除</button>
+        </div>
       </div>
     `;
     card.querySelector('.sched-edit-btn').addEventListener('click', () => openScheduleForm(ev));
