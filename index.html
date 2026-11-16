@@ -411,6 +411,24 @@
   .timeline-photo img { width: 160px; height: 160px; object-fit: cover; border-radius: 12px; cursor: zoom-in; flex-shrink: 0; }
   .timeline-photo .cap { font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
   @media (max-width: 480px) { .timeline-photo img { width: 120px; height: 120px; } }
+  /* Several photos that share one comment */
+  .photo-edit.is-group { grid-template-columns: 1fr; }
+  .group-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+  .group-thumbs .gt { position: relative; }
+  .photo-edit .group-thumbs img { width: 100%; height: auto; aspect-ratio: 1; display: block; border-radius: 10px; }
+  .gt-x {
+    position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; padding: 0; border-radius: 50%;
+    background: rgba(0,0,0,0.55); color: #fff; border: none; font-size: 0.75rem; line-height: 24px; box-shadow: none;
+  }
+  .gt-count { grid-column: 1 / -1; font-size: 0.75rem; color: var(--sub); }
+  .group-toggle {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 10px 12px;
+    background: #fff; border: 2px solid var(--border); border-radius: 12px; font-size: 0.88rem; cursor: pointer;
+  }
+  .group-toggle input { width: 20px; height: 20px; flex-shrink: 0; }
+  .timeline-photo.timeline-group { flex-direction: column; }
+  .timeline-group .tg-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; width: 100%; }
+  .timeline-group .tg-imgs img { width: 100%; height: auto; aspect-ratio: 1; }
   .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
   .photo-grid figure { margin: 0; }
   .photo-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; cursor: zoom-in; display: block; }
@@ -1059,6 +1077,8 @@ document.getElementById('scheduleYearShow').addEventListener('click', showSchedu
 let currentDay = null;
 // Photos picked but not saved yet, per section.
 let pendingPhotos = { garden: [], daily: [], learn: [] };
+// true when the pending photos of a section share one comment.
+let pendingGroup = { garden: false, daily: false, learn: false };
 let commentDirty = { garden: false, daily: false, learn: false };
 let photoTarget = 'daily';     // section that the file inputs / camera add to
 
@@ -1085,6 +1105,9 @@ function buildDaySections() {
         <div class="photo-edit-list" data-photo-list="${s.key}"></div>
         <div class="pending-box" data-pending-box="${s.key}" style="display:none;">
           <div class="pending-label">新しく追加する写真（説明を入れて「写真を保存する」）</div>
+          <label class="group-toggle" data-group-toggle-wrap="${s.key}">
+            <input type="checkbox" data-group-toggle="${s.key}"> 何枚かまとめて、1つのコメントを付ける
+          </label>
           <div class="photo-edit-list" data-pending-list="${s.key}"></div>
           <div class="section-actions">
             <button class="btn-secondary" data-pending-cancel="${s.key}">やめる</button>
@@ -1119,8 +1142,10 @@ function buildDaySections() {
       photoTarget = s.key;
       openCamera();
     });
+    root.querySelector(`[data-group-toggle="${s.key}"]`).addEventListener('change', (e) => setPendingGroup(s.key, e.target.checked));
     root.querySelector(`[data-pending-cancel="${s.key}"]`).addEventListener('click', () => {
       pendingPhotos[s.key] = [];
+      pendingGroup[s.key] = false;
       renderPending(s.key);
     });
     root.querySelector(`[data-pending-save="${s.key}"]`).addEventListener('click', (e) => savePending(s.key, e.currentTarget));
@@ -1132,6 +1157,7 @@ function openDay(dateStr) {
   switchTab('day');
   currentDay = dateStr;
   pendingPhotos = { garden: [], daily: [], learn: [] };
+  pendingGroup = { garden: false, daily: false, learn: false };
   commentDirty = { garden: false, daily: false, learn: false };
   document.querySelectorAll('[data-pending-list], [data-photo-list]').forEach(el => { el.innerHTML = ''; });
   document.querySelectorAll('[data-saved]').forEach(el => { el.textContent = ''; });
@@ -1161,24 +1187,43 @@ function kindOptions(selected) {
   return Object.entries(KIND_LABELS)
     .map(([v, label]) => `<option value="${v}"${v === selected ? ' selected' : ''}>${label}</option>`).join('');
 }
+/* Photos that were saved together with one comment share a `group` id.
+   An "item" is one photo, or one such group: { key, photos, caption, kind, tag }. */
+function groupItems(photos) {
+  const out = [];
+  const byGroup = {};
+  for (const p of photos) {
+    if (p.group && byGroup[p.group]) { byGroup[p.group].photos.push(p); continue; }
+    const it = { key: p.group || p.id, photos: [p], caption: p.caption || '', kind: p.kind || '', tag: p.tag || '' };
+    if (p.group) byGroup[p.group] = it;
+    out.push(it);
+  }
+  return out;
+}
 function photoEditHtml(p, key, isPending) {
   const kind = p.kind || '';
+  const isGroup = p.photos.length > 1;
+  const images = isGroup
+    ? `<div class="group-thumbs">${p.photos.map((ph, i) => `
+        <div class="gt"><img src="${ph.dataUrl}" data-i="${i}" alt=""><button class="gt-x" data-i="${i}" title="この写真を外す">✕</button></div>`).join('')}
+        <div class="gt-count">${p.photos.length}枚まとめて1つのコメント</div>
+      </div>`
+    : `<img src="${p.photos[0].dataUrl}" data-i="0" alt="">`;
+  let actions;
+  if (isPending) actions = isGroup ? '' : '<button class="btn-secondary f-remove">取り消し</button>';
+  else actions = '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button><button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>';
   return `
-    <div class="photo-edit" data-key="${key}">
-      <img src="${p.dataUrl}" alt="">
+    <div class="photo-edit${isGroup ? ' is-group' : ''}" data-key="${key}">
+      ${images}
       <div class="fields">
-        <textarea class="f-caption" placeholder="この写真の説明（例：今年初めての開花）">${escapeHtml(p.caption || '')}</textarea>
+        <textarea class="f-caption" placeholder="${isGroup ? 'これらの写真の説明' : 'この写真の説明（例：今年初めての開花）'}">${escapeHtml(p.caption || '')}</textarea>
         <div class="kind-row">
           <select class="f-kind">${kindOptions(kind)}</select>
           <input type="text" class="f-tag" value="${escapeHtml(p.tag || '')}"
             list="${kind === 'record' ? 'recordTags' : 'gardenTags'}"
             placeholder="${TAG_PLACEHOLDERS[kind] || ''}" style="${kind ? '' : 'display:none;'}">
         </div>
-        <div class="row-actions">
-          ${isPending
-            ? '<button class="btn-secondary f-remove">取り消し</button>'
-            : '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button><button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>'}
-        </div>
+        <div class="row-actions">${actions}</div>
       </div>
     </div>`;
 }
@@ -1222,27 +1267,32 @@ function renderDay(opts = {}) {
     const dirty = {};
     list.querySelectorAll('.photo-edit.dirty').forEach(row => { dirty[row.dataset.key] = readFields(row); });
     const photos = photosOfDate(currentDay).filter(p => (p.kind || '') === s.kind);
-    list.innerHTML = photos.map(p => photoEditHtml(dirty[p.id] ? { ...p, ...dirty[p.id] } : p, p.id, false)).join('');
+    const items = groupItems(photos);
+    list.innerHTML = items.map(it => photoEditHtml(dirty[it.key] ? { ...it, ...dirty[it.key] } : it, it.key, false)).join('');
     list.querySelectorAll('.photo-edit').forEach(row => {
-      const id = row.dataset.key;
-      if (dirty[id]) row.classList.add('dirty');
+      const it = items.find(x => x.key === row.dataset.key);
+      if (dirty[it.key]) row.classList.add('dirty');
       row.addEventListener('input', () => row.classList.add('dirty'));
       row.addEventListener('change', () => row.classList.add('dirty'));
       wireKindSelect(row);
-      row.querySelector('img').addEventListener('click', () => {
-        openLightbox(photos, photos.findIndex(p => p.id === id));
-      });
+      row.querySelectorAll('img[data-i]').forEach(img => img.addEventListener('click', () => {
+        openLightbox(photos, photos.indexOf(it.photos[parseInt(img.dataset.i, 10)]));
+      }));
       row.querySelector('.f-save').addEventListener('click', async () => {
         const f = readFields(row);
         if (!validateFields(f)) return;
-        const p = allPhotos.find(x => x.id === id);
         row.classList.remove('dirty');
-        await saveDoc('pd_photos', id, { ...stripId(p), ...f });
+        for (const p of it.photos) await saveDoc('pd_photos', p.id, { ...stripId(p), ...f });
       });
       row.querySelector('.f-delete').addEventListener('click', async () => {
-        if (!confirm('この写真を削除しますか？')) return;
-        await removeDoc('pd_photos', id);
+        const n = it.photos.length;
+        if (!confirm(n > 1 ? `この${n}枚の写真を削除しますか？` : 'この写真を削除しますか？')) return;
+        for (const p of it.photos) await removeDoc('pd_photos', p.id);
       });
+      row.querySelectorAll('.gt-x').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('この写真だけを削除しますか？')) return;
+        await removeDoc('pd_photos', it.photos[parseInt(b.dataset.i, 10)].id);
+      }));
     });
 
     if (opts.keepComment) syncPendingFromDom(s.key);
@@ -1335,23 +1385,45 @@ document.getElementById('cameraShutterBtn').addEventListener('click', () => {
 });
 function syncPendingFromDom(key) {
   document.querySelectorAll(`[data-pending-list="${key}"] .photo-edit`).forEach(row => {
-    const idx = parseInt(row.dataset.key, 10);
-    if (pendingPhotos[key][idx]) Object.assign(pendingPhotos[key][idx], readFields(row));
+    const f = readFields(row);
+    if (row.dataset.key === 'group') pendingPhotos[key].forEach(p => Object.assign(p, f));
+    else if (pendingPhotos[key][row.dataset.key]) Object.assign(pendingPhotos[key][row.dataset.key], f);
   });
+}
+function setPendingGroup(key, on) {
+  syncPendingFromDom(key);
+  const arr = pendingPhotos[key];
+  if (on && arr.length) {
+    // Start the shared comment from the first photo that already has one.
+    const src = arr.find(p => p.caption || p.tag) || arr[0];
+    const f = { caption: src.caption, kind: src.kind, tag: src.tag };
+    arr.forEach(p => Object.assign(p, f));
+  }
+  pendingGroup[key] = on;
+  renderPending(key);
 }
 function renderPending(key) {
   const box = document.querySelector(`[data-pending-box="${key}"]`);
   const list = document.querySelector(`[data-pending-list="${key}"]`);
-  box.style.display = pendingPhotos[key].length ? '' : 'none';
-  list.innerHTML = pendingPhotos[key].map((p, i) => photoEditHtml(p, i, true)).join('');
+  const arr = pendingPhotos[key];
+  box.style.display = arr.length ? '' : 'none';
+  if (arr.length < 2) pendingGroup[key] = false;
+  const grouped = pendingGroup[key];
+  document.querySelector(`[data-group-toggle-wrap="${key}"]`).style.display = arr.length > 1 ? '' : 'none';
+  document.querySelector(`[data-group-toggle="${key}"]`).checked = grouped;
+  list.innerHTML = grouped
+    ? photoEditHtml({ photos: arr, caption: arr[0].caption, kind: arr[0].kind, tag: arr[0].tag }, 'group', true)
+    : arr.map((p, i) => photoEditHtml({ ...p, photos: [p] }, i, true)).join('');
   list.querySelectorAll('.photo-edit').forEach(row => {
     wireKindSelect(row);
-    row.querySelector('img').addEventListener('click', () => openLightbox(pendingPhotos[key], parseInt(row.dataset.key, 10)));
-    row.querySelector('.f-remove').addEventListener('click', () => {
-      syncPendingFromDom(key);
-      pendingPhotos[key].splice(parseInt(row.dataset.key, 10), 1);
-      renderPending(key);
-    });
+    const base = grouped ? 0 : parseInt(row.dataset.key, 10);
+    row.querySelectorAll('img[data-i]').forEach(img => img.addEventListener('click', () => {
+      openLightbox(arr, base + parseInt(img.dataset.i, 10));
+    }));
+    const remove = (idx) => { syncPendingFromDom(key); arr.splice(idx, 1); renderPending(key); };
+    const rm = row.querySelector('.f-remove');
+    if (rm) rm.addEventListener('click', () => remove(base));
+    row.querySelectorAll('.gt-x').forEach(b => b.addEventListener('click', () => remove(parseInt(b.dataset.i, 10))));
   });
 }
 async function savePending(key, btn) {
@@ -1361,13 +1433,17 @@ async function savePending(key, btn) {
   const existing = photosOfDate(currentDay);
   let order = existing.reduce((m, p) => Math.max(m, p.order || 0), 0);
   const toSave = pendingPhotos[key];
+  const group = pendingGroup[key] && toSave.length > 1 ? uid() : '';
   pendingPhotos[key] = [];
+  pendingGroup[key] = false;
   for (const p of toSave) {
     order++;
-    const ok = await saveDoc('pd_photos', uid(), {
+    const data = {
       date: currentDay, dataUrl: p.dataUrl, caption: p.caption, kind: p.kind, tag: p.tag,
       order, createdAt: Date.now()
-    });
+    };
+    if (group) data.group = group;
+    const ok = await saveDoc('pd_photos', uid(), data);
     if (!ok) { pendingPhotos[key].push(p); }
   }
   btn.disabled = false; btn.textContent = '写真を保存する';
@@ -1477,10 +1553,13 @@ function dayTimelineHtml(s, newestFirst, lightboxList) {
   return `<div class="timeline">${sorted.map(date => {
     const comment = (dayNotes[date] || {})[s.field];
     const commentHtml = comment ? `<div class="timeline-comment">${escapeHtml(comment)}</div>` : '';
-    const photosHtml = photosOfDate(date).filter(p => (p.kind || '') === s.kind).map(p => {
-      lightboxList.push(p);
-      const tag = p.tag ? `<span class="tag-badge${s.kind === 'record' ? ' record' : ''}">${escapeHtml(p.tag)}</span> ` : '';
-      return `<div class="timeline-photo"><img data-idx="${lightboxList.length - 1}" src="${p.dataUrl}" alt=""><div class="cap">${tag}${escapeHtml(p.caption || '')}</div></div>`;
+    const photosHtml = groupItems(photosOfDate(date).filter(p => (p.kind || '') === s.kind)).map(it => {
+      const imgs = it.photos.map(p => {
+        lightboxList.push(p);
+        return `<img data-idx="${lightboxList.length - 1}" src="${p.dataUrl}" alt="">`;
+      }).join('');
+      const tag = it.tag ? `<span class="tag-badge${s.kind === 'record' ? ' record' : ''}">${escapeHtml(it.tag)}</span> ` : '';
+      return timelineItemHtml(it, imgs, tag);
     }).join('');
     return `
       <div class="timeline-day">
@@ -1488,6 +1567,12 @@ function dayTimelineHtml(s, newestFirst, lightboxList) {
         ${s.photosFirst ? photosHtml + commentHtml : commentHtml + photosHtml}
       </div>`;
   }).join('')}</div>`;
+}
+function timelineItemHtml(it, imgs, prefix = '') {
+  const cap = `<div class="cap">${prefix}${escapeHtml(it.caption || '')}</div>`;
+  return it.photos.length > 1
+    ? `<div class="timeline-photo timeline-group"><div class="tg-imgs">${imgs}</div>${cap}</div>`
+    : `<div class="timeline-photo">${imgs}${cap}</div>`;
 }
 function wireTimeline(body, lightboxList) {
   body.querySelectorAll('img[data-idx]').forEach(img => {
@@ -1590,8 +1675,8 @@ function renderGarden() {
     content = `<div class="timeline">${byDate.map(g => `
       <div class="timeline-day">
         <div class="timeline-date" data-date="${g.date}">${formatDateJp(g.date)}<span class="ago">${daysBetween(first, g.date) + 1}日目</span></div>
-        ${g.items.map(({ p, i }) => `
-          <div class="timeline-photo"><img data-idx="${i}" src="${p.dataUrl}" alt=""><div class="cap">${escapeHtml(p.caption || '')}</div></div>`).join('')}
+        ${groupItems(g.items.map(({ p, i }) => ({ ...p, idx: i }))).map(it =>
+          timelineItemHtml(it, it.photos.map(p => `<img data-idx="${p.idx}" src="${p.dataUrl}" alt="">`).join(''))).join('')}
       </div>`).join('')}</div>`;
   }
 
