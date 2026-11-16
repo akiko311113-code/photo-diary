@@ -427,6 +427,13 @@
   }
   .group-toggle input { width: 20px; height: 20px; flex-shrink: 0; }
   .timeline-photo.timeline-group { flex-direction: column; }
+  /* Choosing saved photos to put together */
+  .merge-check { display: none; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; color: var(--accent-dark); cursor: pointer; }
+  .merge-check input { width: 22px; height: 22px; }
+  .merge-mode .merge-check { display: flex; }
+  .merge-mode .photo-edit .row-actions { display: none; }
+  .merge-bar { margin-top: 12px; padding: 12px; border: 2px dashed var(--accent); border-radius: 14px; background: #fff8fb; }
+  .merge-bar .merge-note { font-size: 0.82rem; color: var(--accent-dark); font-weight: 700; }
   .timeline-group .tg-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; width: 100%; }
   .timeline-group .tg-imgs img { width: 100%; height: auto; aspect-ratio: 1; }
   .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
@@ -1080,6 +1087,9 @@ let currentDay = null;
 let pendingPhotos = { garden: [], daily: [], learn: [] };
 // true when the pending photos of a section share one comment.
 let pendingGroup = { garden: false, daily: false, learn: false };
+// Choosing saved photos to put together: on/off and the chosen item keys.
+let mergeMode = { garden: false, daily: false, learn: false };
+let mergeSel = { garden: new Set(), daily: new Set(), learn: new Set() };
 let commentDirty = { garden: false, daily: false, learn: false };
 let photoTarget = 'daily';     // section that the file inputs / camera add to
 
@@ -1104,6 +1114,13 @@ function buildDaySections() {
     const photos = `
       <div class="sec-photos">
         <div class="photo-edit-list" data-photo-list="${s.key}"></div>
+        <div class="merge-bar" data-merge-bar="${s.key}" style="display:none;">
+          <div class="merge-note">ひとまとめにしたい写真に ✓ を入れてください（2つ以上）</div>
+          <div class="section-actions">
+            <button class="btn-secondary" data-merge-cancel="${s.key}">やめる</button>
+            <button class="btn-primary" data-merge-do="${s.key}">選んだ写真をまとめる</button>
+          </div>
+        </div>
         <div class="pending-box" data-pending-box="${s.key}" style="display:none;">
           <div class="pending-label">新しく追加する写真（説明を入れて「写真を保存する」）</div>
           <label class="group-toggle" data-group-toggle-wrap="${s.key}">
@@ -1117,6 +1134,7 @@ function buildDaySections() {
           </div>
         </div>
         <div class="section-actions">
+          <button class="btn-secondary" data-merge-start="${s.key}" style="display:none;">🔗 写真をまとめる</button>
           <button class="btn-secondary" data-take-photo="${s.key}">📷 その場で撮影</button>
           <button class="btn-secondary" data-add-photo="${s.key}">＋ 写真を追加</button>
         </div>
@@ -1139,6 +1157,13 @@ function buildDaySections() {
       photoTarget = s.key;
       document.getElementById('photoInput').click();
     });
+    root.querySelector(`[data-merge-start="${s.key}"]`).addEventListener('click', () => {
+      mergeMode[s.key] = true; mergeSel[s.key] = new Set(); renderDay({ keepComment: true });
+    });
+    root.querySelector(`[data-merge-cancel="${s.key}"]`).addEventListener('click', () => {
+      mergeMode[s.key] = false; renderDay({ keepComment: true });
+    });
+    root.querySelector(`[data-merge-do="${s.key}"]`).addEventListener('click', () => mergeSelected(s));
     root.querySelector(`[data-take-photo="${s.key}"]`).addEventListener('click', () => {
       photoTarget = s.key;
       openCamera();
@@ -1173,6 +1198,7 @@ function openDay(dateStr) {
   currentDay = dateStr;
   pendingPhotos = { garden: [], daily: [], learn: [] };
   pendingGroup = { garden: false, daily: false, learn: false };
+  mergeMode = { garden: false, daily: false, learn: false };
   commentDirty = { garden: false, daily: false, learn: false };
   document.querySelectorAll('[data-pending-list], [data-photo-list]').forEach(el => { el.innerHTML = ''; });
   document.querySelectorAll('[data-saved]').forEach(el => { el.textContent = ''; });
@@ -1227,11 +1253,13 @@ function photoEditHtml(p, key, isPending) {
     : `<img src="${p.photos[0].dataUrl}" data-i="0" alt="">`;
   let actions;
   if (isPending) actions = isGroup ? '' : '<button class="btn-secondary f-remove">取り消し</button>';
-  else actions = '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button><button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>';
+  else actions = (isGroup ? '<button class="btn-secondary f-split">バラバラにする</button>' : '') +
+    '<button class="btn-danger f-delete">削除</button><button class="btn-primary f-save">変更を保存</button><button class="btn-secondary back-to-cal">🗓️ カレンダーに戻る</button>';
   return `
     <div class="photo-edit${isGroup ? ' is-group' : ''}" data-key="${key}">
       ${images}
       <div class="fields">
+        ${isPending ? '' : '<label class="merge-check"><input type="checkbox" class="f-merge"> まとめる</label>'}
         <textarea class="f-caption" placeholder="${isGroup ? 'これらの写真の説明' : 'この写真の説明（例：今年初めての開花）'}">${escapeHtml(p.caption || '')}</textarea>
         <div class="kind-row">
           <select class="f-kind">${kindOptions(kind)}</select>
@@ -1285,8 +1313,22 @@ function renderDay(opts = {}) {
     const photos = photosOfDate(currentDay).filter(p => (p.kind || '') === s.kind);
     const items = groupItems(photos);
     list.innerHTML = items.map(it => photoEditHtml(dirty[it.key] ? { ...it, ...dirty[it.key] } : it, it.key, false)).join('');
+    if (items.length < 2) mergeMode[s.key] = false;
+    list.classList.toggle('merge-mode', mergeMode[s.key]);
+    document.querySelector(`[data-merge-bar="${s.key}"]`).style.display = mergeMode[s.key] ? '' : 'none';
+    document.querySelector(`[data-merge-start="${s.key}"]`).style.display = items.length > 1 && !mergeMode[s.key] ? '' : 'none';
     list.querySelectorAll('.photo-edit').forEach(row => {
       const it = items.find(x => x.key === row.dataset.key);
+      const check = row.querySelector('.f-merge');
+      check.checked = mergeSel[s.key].has(it.key);
+      check.addEventListener('change', () => {
+        if (check.checked) mergeSel[s.key].add(it.key); else mergeSel[s.key].delete(it.key);
+      });
+      const split = row.querySelector('.f-split');
+      if (split) split.addEventListener('click', async () => {
+        if (!confirm('まとめた写真をバラバラにして、1枚ずつにしますか？（コメントはそれぞれの写真に残ります）')) return;
+        for (const p of it.photos) { const { id, group, ...rest } = p; await saveDoc('pd_photos', id, rest); }
+      });
       if (dirty[it.key]) row.classList.add('dirty');
       row.addEventListener('input', () => row.classList.add('dirty'));
       row.addEventListener('change', () => row.classList.add('dirty'));
@@ -1322,6 +1364,20 @@ function renderDay(opts = {}) {
   }
 
   renderDaySchedule();
+}
+async function mergeSelected(s) {
+  const items = groupItems(photosOfDate(currentDay).filter(p => (p.kind || '') === s.kind))
+    .filter(it => mergeSel[s.key].has(it.key));
+  if (items.length < 2) { alert('まとめたい写真を2つ以上選んでください。'); return; }
+  // Keep every comment: different ones are joined, one per line.
+  const captions = [...new Set(items.map(it => (it.caption || '').trim()).filter(Boolean))];
+  const tag = (items.find(it => it.tag) || items[0]).tag || '';
+  const group = uid();
+  mergeMode[s.key] = false;
+  for (const it of items) for (const p of it.photos) {
+    await saveDoc('pd_photos', p.id, { ...stripId(p), group, caption: captions.join('\n'), tag });
+  }
+  renderDay({ keepComment: true });
 }
 function stripId(p) { const { id, ...rest } = p; return rest; }
 
