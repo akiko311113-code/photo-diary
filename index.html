@@ -499,6 +499,23 @@
   .schedule-section .entry-actions { margin: 0; gap: 4px; flex-shrink: 0; }
   .schedule-section .entry-actions button { padding: 3px 8px; font-size: 0.7rem; }
   .schedule-section .entry-form { margin-top: 6px; padding: 10px; }
+
+  /* ---------- ミュー連携 (backup tab) ---------- */
+  .muse-panel {
+    max-width: 480px; margin: 24px auto 0; padding: 14px; text-align: left;
+    background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+  }
+  .muse-panel h2 { font-size: 0.95rem; margin: 0 0 6px; color: var(--accent-backup); }
+  .muse-help { font-size: 0.78rem; color: var(--sub); line-height: 1.6; margin: 0 0 10px; }
+  .muse-panel label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--sub); margin: 8px 0 3px; }
+  .muse-panel input {
+    width: 100%; padding: 7px 10px; border: 2px solid var(--border); border-radius: 10px;
+    font-size: 0.88rem; font-family: inherit; background: #fff;
+  }
+  .muse-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+  .muse-status { font-size: 0.75rem; color: var(--sub); margin-top: 8px; }
+  .muse-error { font-size: 0.72rem; color: var(--danger); margin-top: 4px; word-break: break-all; }
+  .muse-error:empty { display: none; }
 </style>
 </head>
 <body>
@@ -618,6 +635,24 @@
       <div class="backup-actions">
         <button id="exportBtn">📤 バックアップを保存(JSON)</button>
       </div>
+    </div>
+
+    <div class="muse-panel">
+      <h2>🔗 ミュー連携</h2>
+      <p class="muse-help">
+        予定のコピーを、非公開のGitHubリポジトリの <code>schedule.json</code> に自動で書き出します。
+        トークンはこの端末（ブラウザ）の中だけに保存され、クラウドやバックアップファイルには入りません。
+      </p>
+      <label for="museRepo">GitHubリポジトリ（持ち主/名前）</label>
+      <input type="text" id="museRepo" autocomplete="off" spellcheck="false" placeholder="akiko311113-code/photo-diary-data">
+      <label for="musePat">Personal Access Token</label>
+      <input type="password" id="musePat" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+      <div class="muse-actions">
+        <button class="btn-secondary" id="museSaveBtn">保存</button>
+        <button class="btn-primary" id="museSyncBtn">今すぐ同期</button>
+      </div>
+      <div class="muse-status">最終同期：<span id="museLastSync">まだありません</span></div>
+      <div class="muse-error" id="museError"></div>
     </div>
   </section>
 
@@ -940,9 +975,11 @@ function startListeners() {
     snap.docs.forEach(d => { dayNotes[d.id] = d.data(); });
     refreshAllViews();
   }, onErr));
+  let firstSchedule = true;
   unsubs.push(onSnapshot(collection(db, 'schedule'), (snap) => {
     scheduleEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refreshAllViews();
+    if (firstSchedule) { firstSchedule = false; requestMuseSync(); }
   }, onErr));
 }
 function stopListeners() {
@@ -1632,7 +1669,7 @@ function renderDaySchedule() {
     card.querySelector('.sched-edit-btn').addEventListener('click', () => openScheduleForm(ev));
     card.querySelector('.sched-delete-btn').addEventListener('click', async () => {
       if (!confirm('この予定を削除しますか？')) return;
-      await removeDoc('schedule', ev.id);
+      if (await removeDoc('schedule', ev.id)) requestMuseSync();
     });
     panel.appendChild(card);
   }
@@ -1656,7 +1693,7 @@ document.getElementById('scheduleSaveBtn').addEventListener('click', async () =>
     date: startDate, endDate, categoryId, title, note,
     createdAt: existing ? existing.createdAt : Date.now()
   });
-  if (ok) closeScheduleForm();
+  if (ok) { closeScheduleForm(); requestMuseSync(); }
 });
 
 /* ---------- 園芸 / 日々のこと / 学び tabs ---------- */
@@ -1899,6 +1936,100 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   a.click();
   URL.revokeObjectURL(url);
 });
+
+/* ---------- ミュー連携: copy the schedule to schedule.json in a private GitHub repo ----------
+   The repo name and token live only in this browser's localStorage. They are
+   never written to Firestore or to the backup JSON, and none is in this code. */
+const MUSE_REPO_KEY = 'pd_muse_repo';
+const MUSE_PAT_KEY = 'pd_muse_pat';
+const MUSE_LAST_KEY = 'pd_muse_last_sync';
+const MUSE_DEFAULT_REPO = 'akiko311113-code/photo-diary-data';
+function museGet(key) { try { return localStorage.getItem(key) || ''; } catch (e) { return ''; } }
+function museSet(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* storage blocked */ } }
+function museShowLastSync() {
+  const last = museGet(MUSE_LAST_KEY);
+  document.getElementById('museLastSync').textContent = last ? new Date(last).toLocaleString('ja-JP') : 'まだありません';
+}
+function museShowError(msg) { document.getElementById('museError').textContent = msg || ''; }
+
+document.getElementById('museRepo').value = museGet(MUSE_REPO_KEY) || MUSE_DEFAULT_REPO;
+document.getElementById('musePat').value = museGet(MUSE_PAT_KEY);
+museShowLastSync();
+document.getElementById('museSaveBtn').addEventListener('click', () => {
+  museSet(MUSE_REPO_KEY, document.getElementById('museRepo').value.trim() || MUSE_DEFAULT_REPO);
+  museSet(MUSE_PAT_KEY, document.getElementById('musePat').value.trim());
+  museShowError('');
+  document.getElementById('museLastSync').textContent = (museGet(MUSE_LAST_KEY) ? new Date(museGet(MUSE_LAST_KEY)).toLocaleString('ja-JP') : 'まだありません') + '（設定を保存しました）';
+});
+document.getElementById('museSyncBtn').addEventListener('click', () => syncScheduleToGitHub());
+
+// UTF-8 safe Base64 (Japanese text included).
+function base64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function museSchedulePayload() {
+  const schedule = scheduleEvents
+    .map(ev => ({
+      id: ev.id, date: ev.date, endDate: ev.endDate, categoryId: ev.categoryId,
+      title: ev.title, note: ev.note, createdAt: ev.createdAt
+    }))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+  return { exportedAt: new Date().toISOString(), categories: SCHEDULE_CATEGORIES, schedule };
+}
+
+// Calls that come close together are folded into one run; a call made while a
+// run is in progress triggers one more run afterwards, so the latest data wins.
+let museTimer = null;
+let museRunning = false;
+let museAgain = false;
+function requestMuseSync() {
+  if (!museGet(MUSE_PAT_KEY)) return;
+  clearTimeout(museTimer);
+  museTimer = setTimeout(syncScheduleToGitHub, 1500);
+}
+async function syncScheduleToGitHub() {
+  clearTimeout(museTimer);
+  const token = museGet(MUSE_PAT_KEY);
+  if (!token) return;                       // not set up: stay quiet
+  if (museRunning) { museAgain = true; return; }
+  museRunning = true;
+  const btn = document.getElementById('museSyncBtn');
+  btn.disabled = true;
+  try {
+    const repo = museGet(MUSE_REPO_KEY) || MUSE_DEFAULT_REPO;
+    const url = `https://api.github.com/repos/${repo.split('/').map(encodeURIComponent).join('/')}/contents/schedule.json`;
+    const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
+    const content = base64Utf8(JSON.stringify(museSchedulePayload(), null, 2));
+    for (let attempt = 0; ; attempt++) {
+      let sha;
+      const head = await fetch(url, { headers, cache: 'no-store' });
+      if (head.ok) sha = (await head.json()).sha;
+      else if (head.status !== 404) throw new Error(`GET ${head.status} ${await githubMessage(head)}`);
+      const body = { message: 'Sync schedule from photo-diary', content };
+      if (sha) body.sha = sha;
+      const put = await fetch(url, { method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (put.ok) break;
+      // Someone else changed the file between our GET and PUT: read the new sha and retry once.
+      if ((put.status === 409 || put.status === 422) && attempt === 0) continue;
+      throw new Error(`PUT ${put.status} ${await githubMessage(put)}`);
+    }
+    museSet(MUSE_LAST_KEY, new Date().toISOString());
+    museShowLastSync();
+    museShowError('');
+  } catch (err) {
+    museShowError('同期できませんでした: ' + err.message);
+  } finally {
+    museRunning = false;
+    btn.disabled = false;
+    if (museAgain) { museAgain = false; syncScheduleToGitHub(); }
+  }
+}
+async function githubMessage(res) {
+  try { return (await res.json()).message || ''; } catch (e) { return ''; }
+}
 
 renderScheduleMonth();
 renderCollections();
