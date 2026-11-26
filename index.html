@@ -516,6 +516,24 @@
   .muse-status { font-size: 0.75rem; color: var(--sub); margin-top: 8px; }
   .muse-error { font-size: 0.72rem; color: var(--danger); margin-top: 4px; word-break: break-all; }
   .muse-error:empty { display: none; }
+
+  /* ---------- 学び: 記録 and 用語 ---------- */
+  .sub-head { font-size: 0.8rem; font-weight: 800; color: #7c5cd6; margin: 0 0 6px; }
+  .terms-block { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2d9fd; }
+  .term-list { display: flex; flex-direction: column; gap: 8px; }
+  .term-row { display: grid; grid-template-columns: 1fr auto; gap: 5px; padding: 8px; border: 1px solid #e2d9fd; border-radius: 10px; background: #fff; }
+  .term-row .t-term { font-weight: 700; }
+  .term-row .t-meaning { grid-column: 1 / -1; min-height: 56px; }
+  .day-section .term-row textarea.t-meaning { min-height: 56px; }
+  .term-row .t-del {
+    width: 26px; height: 26px; padding: 0; border-radius: 50%; align-self: center;
+    background: #fff; border: 1px solid var(--border); color: var(--sub); font-size: 0.7rem; box-shadow: none;
+  }
+  .term-search { width: 100%; padding: 7px 10px; border: 2px solid #e2d9fd; border-radius: 10px; font-size: 0.88rem; margin-bottom: 10px; font-family: inherit; }
+  .term-card { background: #fff; border: 1px solid #e2d9fd; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .term-card .tc-term { font-weight: 800; font-size: 0.98rem; color: #5b3fc4; }
+  .term-card .tc-meaning { font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; margin-top: 3px; }
+  .term-card .tc-date { font-size: 0.72rem; color: var(--sub); margin-top: 4px; cursor: pointer; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -1099,7 +1117,7 @@ function renderScheduleMonth() {
     for (const s of SECTIONS) {
       const n = dayPhotos.filter(p => (p.kind || '') === s.kind).length;
       if (n > 1) marks.push(`${s.icon}${n}`);
-      else if (n || note[s.field]) marks.push(s.icon);
+      else if (n || noteHas(s, note)) marks.push(s.icon);
     }
     const marksHtml = marks.length ? `<div class="cal-marks">${marks.join(' ')}</div>` : '';
 
@@ -1184,6 +1202,7 @@ let pendingGroup = { garden: false, daily: false, learn: false };
 let mergeMode = { garden: false, daily: false, learn: false };
 let mergeSel = { garden: new Set(), daily: new Set(), learn: new Set() };
 let commentDirty = { garden: false, daily: false, learn: false };
+let termsDirty = false;        // 用語 edited on the day page but not saved yet
 let photoTarget = 'daily';     // section that the file inputs / camera add to
 
 function addDays(dateStr, n) {
@@ -1191,7 +1210,7 @@ function addDays(dateStr, n) {
   d.setDate(d.getDate() + n);
   return toDateStr(d);
 }
-function hasPending() { return SECTIONS.some(s => pendingPhotos[s.key].length); }
+function hasPending() { return termsDirty || SECTIONS.some(s => pendingPhotos[s.key].length); }
 
 function buildDaySections() {
   document.getElementById('daySections').innerHTML = SECTIONS.map(s => {
@@ -1235,10 +1254,23 @@ function buildDaySections() {
         <button class="btn-secondary" data-take-photo="${s.key}">📷 その場で撮影</button>
         <button class="btn-secondary" data-add-photo="${s.key}">＋ 写真を追加</button>
       </div>`;
+    // 学び has two parts: 記録 (comment and photos) and 用語 (a list of terms).
+    const isLearn = s.key === 'learn';
+    const terms = isLearn ? `
+      <div class="terms-block">
+        <div class="sub-head">🔤 用語</div>
+        <div class="term-list" id="termList"></div>
+        <div class="section-actions">
+          <span class="saved-note" id="termsSavedNote"></span>
+          <button class="btn-secondary" id="addTermBtn">＋ 用語を追加</button>
+          <button class="btn-primary" id="saveTermsBtn">用語を保存</button>
+        </div>
+      </div>` : '';
     return `
       <div class="day-section sec-${s.key}">
         <h2>${s.icon} ${s.label}</h2>
-        ${s.photosFirst ? photos + comment : comment + photos}${addButtons}
+        ${isLearn ? '<div class="sub-head">📝 記録</div>' : ''}
+        ${s.photosFirst ? photos + comment : comment + photos}${addButtons}${terms}
       </div>`;
   }).join('');
 
@@ -1284,8 +1316,14 @@ buildDaySections();
 // something for this day come first. Decided when the day is opened, so the
 // page does not jump around while typing.
 const DAY_ORDER = ['daily', 'garden', 'learn'];
+function termsOf(note) { return Array.isArray(note && note.terms) ? note.terms : []; }
+// Has this section a comment (or, for 学び, a term) on the day?
+function noteHas(s, note) {
+  return !!(note || {})[s.field] || (s.key === 'learn' && termsOf(note).length > 0);
+}
+function noteIsEmpty(note) { return SECTIONS.every(x => !noteHas(x, note)); }
 function sectionHasContent(s, dateStr) {
-  return !!(dayNotes[dateStr] || {})[s.field] ||
+  return noteHas(s, dayNotes[dateStr]) ||
     photosOfDate(dateStr).some(p => (p.kind || '') === s.kind);
 }
 function orderDaySections(dateStr) {
@@ -1301,6 +1339,8 @@ function openDay(dateStr) {
   pendingGroup = { garden: false, daily: false, learn: false };
   mergeMode = { garden: false, daily: false, learn: false };
   commentDirty = { garden: false, daily: false, learn: false };
+  termsDirty = false;
+  document.getElementById('termsSavedNote').textContent = '';
   document.querySelectorAll('[data-pending-list], [data-photo-list]').forEach(el => { el.innerHTML = ''; });
   document.querySelectorAll('[data-saved]').forEach(el => { el.textContent = ''; });
   closeScheduleForm();
@@ -1310,7 +1350,7 @@ function openDay(dateStr) {
   renderDay();
 }
 function backToCalendar() {
-  if (hasPending() && !confirm('保存していない写真があります。カレンダーに戻りますか？')) return;
+  if (hasPending() && !confirm('保存していない写真や用語があります。カレンダーに戻りますか？')) return;
   showMonthPanel();
   switchTab('calendar');
 }
@@ -1322,7 +1362,7 @@ document.getElementById('tab-day').addEventListener('click', (e) => {
 document.getElementById('dayPrevBtn').addEventListener('click', () => moveDay(-1));
 document.getElementById('dayNextBtn').addEventListener('click', () => moveDay(1));
 function moveDay(n) {
-  if (hasPending() && !confirm('保存していない写真があります。別の日に移りますか？')) return;
+  if (hasPending() && !confirm('保存していない写真や用語があります。別の日に移りますか？')) return;
   openDay(addDays(currentDay, n));
 }
 
@@ -1465,6 +1505,8 @@ function renderDay(opts = {}) {
     }
   }
 
+  if (!(opts.keepComment && termsDirty)) { renderTerms(termsOf(note)); termsDirty = false; }
+
   renderDaySchedule();
 }
 async function mergeSelected(s) {
@@ -1483,13 +1525,65 @@ async function mergeSelected(s) {
 }
 function stripId(p) { const { id, ...rest } = p; return rest; }
 
+// Save the day's pd_days doc, or remove it when nothing is left in it.
+async function saveDayNote(merged) {
+  return noteIsEmpty(merged)
+    ? (dayNotes[currentDay] ? await removeDoc('pd_days', currentDay) : true)
+    : await saveDoc('pd_days', currentDay, merged);
+}
+
+/* 用語 (terms) on the day page: [{ term, meaning }] in pd_days.terms */
+function termRowHtml(t) {
+  return `
+    <div class="term-row">
+      <input type="text" class="t-term" placeholder="用語" value="${escapeHtml(t.term || '')}">
+      <button class="t-del" title="この用語を消す">✕</button>
+      <textarea class="t-meaning" placeholder="意味・説明">${escapeHtml(t.meaning || '')}</textarea>
+    </div>`;
+}
+function readTerms() {
+  return Array.from(document.querySelectorAll('#termList .term-row')).map(row => ({
+    term: row.querySelector('.t-term').value.trim(),
+    meaning: row.querySelector('.t-meaning').value.trim()
+  }));
+}
+function renderTerms(list) {
+  const rows = list.length ? list : [{ term: '', meaning: '' }];
+  document.getElementById('termList').innerHTML = rows.map(termRowHtml).join('');
+}
+function markTermsDirty() {
+  termsDirty = true;
+  document.getElementById('termsSavedNote').textContent = '';
+}
+document.getElementById('termList').addEventListener('input', markTermsDirty);
+document.getElementById('termList').addEventListener('click', (e) => {
+  const del = e.target.closest('.t-del');
+  if (!del) return;
+  del.closest('.term-row').remove();
+  if (!document.querySelector('#termList .term-row')) renderTerms([]);
+  markTermsDirty();
+});
+document.getElementById('addTermBtn').addEventListener('click', () => {
+  document.getElementById('termList').insertAdjacentHTML('beforeend', termRowHtml({}));
+  const rows = document.querySelectorAll('#termList .term-row');
+  rows[rows.length - 1].querySelector('.t-term').focus();
+});
+document.getElementById('saveTermsBtn').addEventListener('click', async () => {
+  const terms = readTerms().filter(t => t.term || t.meaning);
+  if (terms.some(t => !t.term)) { alert('用語の名前を入れてください（説明だけの行があります）。'); return; }
+  const merged = { ...(dayNotes[currentDay] || {}), date: currentDay, terms, updatedAt: Date.now() };
+  if (!terms.length) delete merged.terms;
+  if (await saveDayNote(merged)) {
+    termsDirty = false;
+    renderTerms(terms);
+    document.getElementById('termsSavedNote').textContent = '保存しました';
+  }
+});
+
 async function saveComment(s) {
   const value = document.querySelector(`.sec-comment-input[data-sec="${s.key}"]`).value.trim();
   const merged = { ...(dayNotes[currentDay] || {}), date: currentDay, [s.field]: value, updatedAt: Date.now() };
-  const empty = SECTIONS.every(x => !merged[x.field]);
-  const ok = empty
-    ? (dayNotes[currentDay] ? await removeDoc('pd_days', currentDay) : true)
-    : await saveDoc('pd_days', currentDay, merged);
+  const ok = await saveDayNote(merged);
   if (ok) {
     commentDirty[s.key] = false;
     document.querySelector(`[data-saved="${s.key}"]`).textContent = '保存しました';
@@ -1701,12 +1795,12 @@ document.getElementById('scheduleSaveBtn').addEventListener('click', async () =>
 const colState = {
   garden: { mode: 'days', tag: null, view: 'timeline', newestFirst: false, daysNewestFirst: true },
   daily: { newestFirst: true },
-  learn: { newestFirst: true }
+  learn: { mode: 'record', newestFirst: true, termsOrder: 'kana', query: '' }
 };
 const SECTION_INTRO = {
   garden: '日付の画面の「🌹 園芸」に書いたコメントと写真が、ここにまとまります。写真に植物の名前を付けると「植物ごと」で成長の記録として見られます。',
   daily: '日付の画面の「📝 日々のこと」に書いたコメントと写真が、日ごとにまとまります。',
-  learn: '日付の画面の「📚 学び」に書いたコメントと写真が、日ごとにまとまります。'
+  learn: '日付の画面の「📚 学び」に書いた記録（コメントと写真）が日ごとに、用語は「用語」にまとまります。'
 };
 function shortDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(v => parseInt(v, 10));
@@ -1763,17 +1857,83 @@ function renderDayCollection(key) {
   const s = sectionByKey(key);
   const st = colState[key];
   const body = bodyOf(key);
+  if (key === 'learn' && st.mode === 'terms') { renderTermsCollection(); return; }
   const lightboxList = [];
   const timeline = dayTimelineHtml(s, st.newestFirst, lightboxList);
   body.innerHTML = `
     <p class="collection-intro">${SECTION_INTRO[key]}</p>
+    ${key === 'learn' ? learnModeToggle() : ''}
     <div class="view-toggle">
       <button data-act="order">${st.newestFirst ? '新しい順 ⇅' : '古い順 ⇅'}</button>
     </div>
     ${timeline}
   `;
   body.querySelector('[data-act="order"]').addEventListener('click', () => { st.newestFirst = !st.newestFirst; renderDayCollection(key); });
+  if (key === 'learn') wireLearnMode(body);
   wireTimeline(body, withDateCaption(lightboxList));
+}
+
+// 学び tab: 記録 (timeline of comments and photos) or 用語 (all terms).
+function learnModeToggle() {
+  const mode = colState.learn.mode;
+  return `
+    <div class="view-toggle">
+      <button data-learn-mode="record" class="${mode === 'record' ? 'active' : ''}">📝 記録</button>
+      <button data-learn-mode="terms" class="${mode === 'terms' ? 'active' : ''}">🔤 用語</button>
+    </div>`;
+}
+function wireLearnMode(body) {
+  body.querySelectorAll('[data-learn-mode]').forEach(b => b.addEventListener('click', () => {
+    colState.learn.mode = b.dataset.learnMode;
+    renderDayCollection('learn');
+  }));
+}
+function allTerms() {
+  const out = [];
+  for (const [date, note] of Object.entries(dayNotes)) {
+    termsOf(note).forEach(t => { if (t.term) out.push({ ...t, date }); });
+  }
+  return out;
+}
+function renderTermsCollection() {
+  const st = colState.learn;
+  const body = bodyOf('learn');
+  body.innerHTML = `
+    <p class="collection-intro">${SECTION_INTRO.learn}</p>
+    ${learnModeToggle()}
+    <input type="search" class="term-search" id="termSearch" placeholder="🔍 用語や説明で探す" value="${escapeHtml(st.query)}">
+    <div class="view-toggle">
+      <button data-act="torder">${st.termsOrder === 'kana' ? '名前順 ⇅' : '新しい順 ⇅'}</button>
+    </div>
+    <div id="termCards"></div>
+  `;
+  wireLearnMode(body);
+  body.querySelector('[data-act="torder"]').addEventListener('click', () => {
+    st.termsOrder = st.termsOrder === 'kana' ? 'newest' : 'kana';
+    renderTermsCollection();
+  });
+  body.querySelector('#termSearch').addEventListener('input', (e) => { st.query = e.target.value; renderTermCards(); });
+  renderTermCards();
+}
+function renderTermCards() {
+  const st = colState.learn;
+  const box = document.getElementById('termCards');
+  if (!box) return;
+  const all = allTerms();
+  const q = st.query.trim().toLowerCase();
+  const list = all.filter(t => !q || (t.term + '\n' + (t.meaning || '')).toLowerCase().includes(q));
+  if (st.termsOrder === 'kana') list.sort((a, b) => a.term.localeCompare(b.term, 'ja') || a.date.localeCompare(b.date));
+  else list.sort((a, b) => b.date.localeCompare(a.date));
+  box.innerHTML = !all.length
+    ? '<div class="empty-state">まだ用語はありません。日付の画面の「📚 学び」→「🔤 用語」から追加できます。</div>'
+    : !list.length ? '<div class="empty-state">見つかりませんでした</div>'
+    : `<div class="collection-sub">${list.length}件</div>` + list.map(t => `
+      <div class="term-card">
+        <div class="tc-term">${escapeHtml(t.term)}</div>
+        ${t.meaning ? `<div class="tc-meaning">${escapeHtml(t.meaning)}</div>` : ''}
+        <div class="tc-date" data-date="${t.date}">${formatDateJp(t.date)}</div>
+      </div>`).join('');
+  box.querySelectorAll('.tc-date').forEach(el => el.addEventListener('click', () => openDay(el.dataset.date)));
 }
 
 function renderGarden() {
