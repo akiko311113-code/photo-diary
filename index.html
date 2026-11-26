@@ -988,10 +988,12 @@ function startListeners() {
     allPhotos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     refreshAllViews();
   }, onErr));
+  let firstDays = true;
   unsubs.push(onSnapshot(collection(db, 'pd_days'), (snap) => {
     dayNotes = {};
     snap.docs.forEach(d => { dayNotes[d.id] = d.data(); });
     refreshAllViews();
+    if (firstDays) { firstDays = false; moveOldLearnToTerms(); }
   }, onErr));
   let firstSchedule = true;
   unsubs.push(onSnapshot(collection(db, 'schedule'), (snap) => {
@@ -999,6 +1001,32 @@ function startListeners() {
     refreshAllViews();
     if (firstSchedule) { firstSchedule = false; requestMuseSync(); }
   }, onErr));
+}
+/* One-time move (user's wish, 2026-11-26): 学び comments written before 学び was
+   split into 記録 and 用語 belong in 用語. Only comments last saved before the
+   split went live are moved, so new 記録 comments stay where they are. The
+   original text is kept in `learnOld`. Running again finds nothing to move. */
+const LEARN_SPLIT_AT = Date.parse('2026-11-26T01:30:00Z');
+function commentToTerm(text) {
+  const lines = text.split('\n');
+  const first = lines[0].trim();
+  const rest = lines.slice(1).join('\n').trim();
+  if (!rest) {
+    const m = first.match(/^(.+?)\s*[：:＝=]\s*(.+)$/);
+    if (m) return { term: m[1].trim(), meaning: m[2].trim() };
+  }
+  return { term: first, meaning: rest };
+}
+async function moveOldLearnToTerms() {
+  for (const [date, note] of Object.entries(dayNotes)) {
+    const text = (note.learn || '').trim();
+    if (!text || (note.updatedAt || 0) >= LEARN_SPLIT_AT) continue;
+    await saveDoc('pd_days', date, {
+      ...note, learn: '', learnOld: text,
+      terms: [...termsOf(note), commentToTerm(text)],
+      updatedAt: Date.now()
+    });
+  }
 }
 function stopListeners() {
   unsubs.forEach(u => u());
