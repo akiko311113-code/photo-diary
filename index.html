@@ -1051,7 +1051,10 @@ function switchTab(tab) {
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    if (currentTab === 'day' && !confirmLeaveDay()) return;
+    switchTab(btn.dataset.tab);
+  });
 });
 
 /* ---------- Schedule calendar (same as Diary's 予定 page) ---------- */
@@ -1238,7 +1241,34 @@ function addDays(dateStr, n) {
   d.setDate(d.getDate() + n);
   return toDateStr(d);
 }
-function hasPending() { return termsDirty || SECTIONS.some(s => pendingPhotos[s.key].length); }
+function hasPending() { return unsavedItems().length > 0; }
+// What on the open day page has been typed or picked but not saved yet.
+function unsavedItems() {
+  if (!currentDay) return [];
+  const note = dayNotes[currentDay] || {};
+  const items = [];
+  for (const s of SECTIONS) {
+    const ta = document.querySelector(`.sec-comment-input[data-sec="${s.key}"]`);
+    if (ta && ta.value.trim() !== (note[s.field] || '').trim()) items.push(`${s.label}のコメント`);
+    if (pendingPhotos[s.key].length) items.push(`${s.label}の新しい写真（${pendingPhotos[s.key].length}枚）`);
+    if (document.querySelector(`[data-photo-list="${s.key}"] .photo-edit.dirty`)) items.push(`${s.label}の写真の説明の変更`);
+  }
+  const typed = readTerms().filter(t => t.term || t.meaning);
+  if (JSON.stringify(typed) !== JSON.stringify(termsOf(note).map(t => ({ term: t.term || '', meaning: t.meaning || '' })))) items.push('学びの用語');
+  const form = document.getElementById('scheduleEntryForm');
+  if (form.classList.contains('open') && document.getElementById('scheduleEntryTitle').value.trim()) items.push('予定');
+  return items;
+}
+// Ask before leaving the day page when something is not saved.
+function confirmLeaveDay() {
+  const items = unsavedItems();
+  if (!items.length) return true;
+  return confirm('まだ保存していないものがあります。\n\n' + items.map(x => '・' + x).join('\n') +
+    '\n\nこのまま進むと、入力した内容は消えてしまいます。\n進みますか？（保存するときは「キャンセル」を押してください）');
+}
+window.addEventListener('beforeunload', (e) => {
+  if (currentTab === 'day' && hasPending()) { e.preventDefault(); e.returnValue = ''; }
+});
 
 function buildDaySections() {
   document.getElementById('daySections').innerHTML = SECTIONS.map(s => {
@@ -1378,7 +1408,7 @@ function openDay(dateStr) {
   renderDay();
 }
 function backToCalendar() {
-  if (hasPending() && !confirm('保存していない写真や用語があります。カレンダーに戻りますか？')) return;
+  if (!confirmLeaveDay()) return;
   showMonthPanel();
   switchTab('calendar');
 }
@@ -1390,7 +1420,7 @@ document.getElementById('tab-day').addEventListener('click', (e) => {
 document.getElementById('dayPrevBtn').addEventListener('click', () => moveDay(-1));
 document.getElementById('dayNextBtn').addEventListener('click', () => moveDay(1));
 function moveDay(n) {
-  if (hasPending() && !confirm('保存していない写真や用語があります。別の日に移りますか？')) return;
+  if (!confirmLeaveDay()) return;
   openDay(addDays(currentDay, n));
 }
 
